@@ -275,30 +275,6 @@ html,body{height:100%;min-height:0;overflow:hidden}
   .logo-area,.nick-wrap,.online-strip,.showcase,.play-wrap{flex-shrink:0}
 }
 
-
-/* ===== V2: Startseite + Tabs ===== */
-#menu::before{content:'';position:fixed;inset:-60px;background-image:linear-gradient(rgba(100,245,210,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(100,245,210,.05) 1px,transparent 1px);background-size:44px 44px;-webkit-mask-image:radial-gradient(ellipse at 50% 40%,#000 0%,transparent 70%);mask-image:radial-gradient(ellipse at 50% 40%,#000 0%,transparent 70%);animation:gridmove 14s linear infinite;pointer-events:none;z-index:0}
-@keyframes gridmove{to{transform:translate(44px,44px)}}
-#menu>*{position:relative;z-index:1}
-.logo{background-size:100% 200%;animation:logoshine 5s ease-in-out infinite}
-@keyframes logoshine{0%,100%{background-position:0 0}50%{background-position:0 35%}}
-.hero{width:min(100%,460px);margin:6px auto 0;display:flex;align-items:center;gap:14px;padding:12px 16px;border:1px solid rgba(148,171,220,.18);border-radius:22px;background:linear-gradient(155deg,rgba(27,34,62,.85),rgba(10,14,30,.92));box-shadow:0 14px 40px rgba(0,0,0,.3),0 0 40px color-mix(in srgb,var(--hc,#64f5d2) 14%,transparent);transition:box-shadow .3s,border-color .3s;border-color:color-mix(in srgb,var(--hc,#64f5d2) 40%,transparent)}
-.hero-art{width:clamp(90px,26vw,124px);height:clamp(90px,26vw,124px);flex:0 0 auto;filter:drop-shadow(0 0 14px var(--hc,#64f5d2));animation:herofloat 3.4s ease-in-out infinite}
-.hero-art svg{width:100%;height:100%}
-@keyframes herofloat{50%{transform:translateY(-5px) scale(1.03)}}
-.hero-info{flex:1;min-width:0}
-.hero-name{font-size:22px;font-weight:900;letter-spacing:2px;color:#fff}
-.hero-role{font-size:10px;letter-spacing:2.5px;text-transform:uppercase;color:var(--hc,#64f5d2);margin:1px 0 8px}
-.hstat{display:grid;grid-template-columns:44px 1fr;align-items:center;gap:8px;font-size:9px;letter-spacing:1px;color:#9aa8c5;margin-top:4px}
-.hbar{height:6px;border-radius:4px;background:rgba(255,255,255,.07);overflow:hidden}
-.hbar i{display:block;height:100%;border-radius:4px;background:linear-gradient(90deg,var(--hc,#64f5d2),#fff);transition:width .4s}
-.online-strip{grid-template-columns:repeat(4,minmax(0,1fr))!important}
-.oc-tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:0 0 6px;padding:5px;border:1px solid rgba(148,171,220,.14);border-radius:14px;background:rgba(255,255,255,.03)}
-.oc-tab{min-height:40px;border:0;border-radius:10px;background:transparent;color:#9aa8c5;font-size:10px;font-weight:800;letter-spacing:.8px;cursor:pointer;transition:background .18s,color .18s}
-.oc-tab[aria-selected=true]{background:linear-gradient(135deg,rgba(100,245,210,.22),rgba(120,169,255,.14));color:#fff;box-shadow:inset 0 0 0 1px rgba(100,245,210,.35)}
-.online-section[data-tab]{display:none}
-.online-panel[data-tab=account] .online-section[data-tab=account],.online-panel[data-tab=lobby] .online-section[data-tab=lobby],.online-panel[data-tab=rank] .online-section[data-tab=rank],.online-panel[data-tab=sound] .online-section[data-tab=sound]{display:block}
-@media(max-width:380px){.online-pill span{font-size:8px}.hero{padding:10px}}
 </style>
 </head>
 <body>
@@ -315,11 +291,9 @@ html,body{height:100%;min-height:0;overflow:hidden}
         <button class="online-pill primary" id="onlineOpen"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>ACCOUNT</span></button>
         <button class="online-pill" id="leaderboardOpen"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 21h8m-4-4v4M7 4h10v5a5 5 0 0 1-10 0V4Z"/><path d="M7 6H4v2a4 4 0 0 0 4 4m9-6h3v2a4 4 0 0 1-4 4"/></svg><span>RANGLISTE</span></button>
         <button class="online-pill" id="settingsOpen"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="m19.4 15 .1.1 1.4 1.1-1.4 2.4-1.7-.7a8 8 0 0 1-1.8 1l-.3 1.8h-2.8l-.3-1.8a8 8 0 0 1-1.8-1l-1.7.7-1.4-2.4L7.1 15a7 7 0 0 1 0-2l-1.4-1.1 1.4-2.4 1.7.7a8 8 0 0 1 1.8-1l.3-1.8h2.8l.3 1.8a8 8 0 0 1 1.8 1l1.7-.7 1.4 2.4-1.4 1.1a7 7 0 0 1-.1 2Z"/></svg><span>SOUND</span></button>
-        <button class="online-pill" id="lobbyOpen"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20v-1.5a4.5 4.5 0 0 1 4.5-4.5h4a4.5 4.5 0 0 1 4.5 4.5V20M16 4.5a3.5 3.5 0 0 1 0 7M21.5 20v-1.5a4.5 4.5 0 0 0-3-4.2"/></svg><span>LOBBY</span></button>
       </div>
       <div id="miniStats">Gastprofil · lokal</div>
     </div>
-    <div class="hero" id="hero"><div class="hero-art" id="heroArt"></div><div class="hero-info"><div class="hero-name" id="heroName"></div><div class="hero-role" id="heroRole"></div><div id="heroStats"></div></div></div>
     <div class="showcase" id="sel"></div>
     <div class="play-wrap"><button id="go">FIGHT</button></div>
     <div class="hint">Wähle deinen Roboter · Tippe deinen Namen</div>
@@ -345,10 +319,9 @@ html,body{height:100%;min-height:0;overflow:hidden}
   </div>
 
   <div id="onlineModal" aria-hidden="true">
-    <section class="online-panel" data-tab="account" role="dialog" aria-modal="true" aria-label="Online Lobby">
+    <section class="online-panel" role="dialog" aria-modal="true" aria-label="Online Lobby">
       <div class="online-head"><div><div class="online-title">OVERCHARGE ONLINE</div><div class="online-muted">Profil · Matchmaking · Rangliste</div></div><button id="onlineClose" aria-label="Schließen">×</button></div>
-      <div class="oc-tabs" role="tablist"><button class="oc-tab" data-t="account" role="tab">ACCOUNT</button><button class="oc-tab" data-t="lobby" role="tab">LOBBY</button><button class="oc-tab" data-t="rank" role="tab">RANGLISTE</button><button class="oc-tab" data-t="sound" role="tab">SOUND</button></div>
-      <section class="online-section" data-tab="account">
+      <section class="online-section">
         <h3>Dein Account</h3>
         <div id="authSignedOut">
           <input class="online-input" id="authName" maxlength="12" placeholder="Spielername" autocomplete="nickname" />
@@ -359,13 +332,13 @@ html,body{height:100%;min-height:0;overflow:hidden}
         <div id="authSignedIn" class="hidden"><div><div class="account-name" id="accountName">Angemeldet</div><div class="account-detail" id="accountDetail">Profil wird geladen …</div></div><button class="online-action danger" id="logoutBtn">ABMELDEN</button></div>
         <div id="authStatus" class="online-status" aria-live="polite"></div>
       </section>
-      <section class="online-section" id="soundSettings" data-tab="sound">
+      <section class="online-section" id="soundSettings">
         <h3><svg class="ui-icon" viewBox="0 0 24 24" style="vertical-align:middle;margin-right:5px"><path d="M11 5 6 9H3v6h3l5 4V5Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7m3-10a9 9 0 0 1 0 13"/></svg>Sound-Optionen</h3>
         <div class="sound-row"><label for="masterVolume">Gesamtlautstärke <strong id="volumeValue">70%</strong></label><input id="masterVolume" type="range" min="0" max="100" value="70"/></div>
         <div class="sound-row"><label for="sfxToggle">Spiel-Soundeffekte</label><input id="sfxToggle" type="checkbox" checked/></div>
         <div class="online-muted">Änderungen werden automatisch auf diesem Gerät gespeichert.</div>
       </section>
-      <section class="online-section" data-tab="lobby">
+      <section class="online-section">
         <h3>Lobby · 10 Plätze</h3>
         <div class="online-muted">Die Lobby bleibt mit Bots aufgefüllt. Jeder echte Spieler ersetzt genau einen Bot.</div>
         <div class="online-actions"><button class="online-action" id="quickJoin">⚡ QUICK JOIN</button><button class="online-action" id="createRoom">＋ RAUM ERSTELLEN</button></div>
@@ -377,7 +350,7 @@ html,body{height:100%;min-height:0;overflow:hidden}
         </div>
         <div id="roomNotice" class="online-status" aria-live="polite"></div>
       </section>
-      <section class="online-section" data-tab="rank">
+      <section class="online-section">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><h3 style="margin:0">Top Piloten</h3><button class="online-action secondary" id="refreshRank" style="padding:7px 10px">AKTUALISIEREN</button></div>
         <div class="online-muted" style="margin:7px 0">Sortiert nach Trophäen. Anmeldung erforderlich, um deinen Fortschritt cloudbasiert zu speichern.</div>
         <ol id="leaderboardList"><li class="online-muted" style="padding:10px">Rangliste wird geladen …</li></ol>
@@ -432,28 +405,19 @@ const MODEL_IDS=Object.keys(MODELS);
 
 function drawModel(c,m,x,y,r,a,t=0){
   c.save();c.translate(x,y);c.rotate(a);c.scale(r,r);
-  c.lineWidth=.05;c.lineJoin='round';c.strokeStyle='rgba(0,0,0,.6)';
-  const gl=c.createRadialGradient(0,0,.2,0,0,1.5);gl.addColorStop(0,m.c.b+(Math.sin(t*4)>0?'55':'40'));gl.addColorStop(1,m.c.b+'00');
-  c.fillStyle=gl;c.beginPath();c.arc(0,0,1.5,0,6.283);c.fill();
-  const sh=c.createLinearGradient(-.9,-.9,.9,.9);sh.addColorStop(0,'rgba(255,255,255,.38)');sh.addColorStop(.5,'rgba(255,255,255,0)');sh.addColorStop(1,'rgba(0,0,0,.38)');
+  c.lineWidth=.05;c.lineJoin='round';c.strokeStyle='rgba(0,0,0,.55)';
   for(const s of m.s){
     c.save();if(s.o)c.rotate(t*s.o);
     c.fillStyle=m.c[s.k];c.shadowColor=m.c.g;c.shadowBlur=s.k==='g'?r*.5:0;c.beginPath();
     if(s.p)s.p.forEach(([u,v],i)=>i?c.lineTo(u,v):c.moveTo(u,v)),c.closePath();else c.arc(s.x,s.y,s.r,0,6.283);
-    c.fill();c.shadowBlur=0;
-    if(s.k!=='g'){c.fillStyle=sh;c.fill();}
-    c.stroke();c.restore();
+    c.fill();c.shadowBlur=0;c.stroke();c.restore();
   }
   c.restore();
 }
-let _svgN=0;
 function modelSVG(m){
-  const id='mg'+(_svgN++);
-  let o=`<svg viewBox="-1.25 -1.25 2.5 2.5" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="-.9" y1="-.9" x2=".9" y2=".9"><stop offset="0" stop-color="#fff" stop-opacity=".38"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".38"/></linearGradient><radialGradient id="${id}r"><stop offset=".15" stop-color="${m.c.b}" stop-opacity=".35"/><stop offset="1" stop-color="${m.c.b}" stop-opacity="0"/></radialGradient></defs><circle r="1.25" fill="url(#${id}r)"/><g transform="rotate(-90)" stroke="rgba(0,0,0,.6)" stroke-width=".05" stroke-linejoin="round">`;
+  let o=`<svg viewBox="-1.25 -1.25 2.5 2.5" xmlns="http://www.w3.org/2000/svg"><g transform="rotate(-90)" stroke="rgba(0,0,0,.55)" stroke-width=".05" stroke-linejoin="round">`;
   for(const s of m.s){
-    const f=m.c[s.k],sh=s.k==='g'?'':'<!--S-->';
-    let e=s.p?`<polygon points="${s.p.join(' ')}" fill="${f}"/>`:`<circle cx="${s.x}" cy="${s.y}" r="${s.r}" fill="${f}"/>`;
-    if(s.k!=='g')e+=e.replace(/fill="[^"]*"/,`fill="url(#${id})" stroke="none"`);
+    const f=m.c[s.k],e=s.p?`<polygon points="${s.p.join(' ')}" fill="${f}"/>`:`<circle cx="${s.x}" cy="${s.y}" r="${s.r}" fill="${f}"/>`;
     o+=s.o?`<g>${e}<animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="${(6.283/s.o).toFixed(1)}s" repeatCount="indefinite"/></g>`:e;
   }
   return o+'</g></svg>';
@@ -710,15 +674,6 @@ const BRS = [
 ];
 
 let sel = BRS[0];
-function updateHero(b){
-  const m=MODELS[b.id],h=document.getElementById('hero'),mx=k=>Math.max(...BRS.map(x=>x[k]));
-  h.style.setProperty('--hc',b.color);
-  document.getElementById('heroArt').innerHTML=m?modelSVG(m):b.icon;
-  document.getElementById('heroName').textContent=b.name;
-  document.getElementById('heroRole').textContent=b.role;
-  const st=[['HP',b.hp/mx('hp')],['TEMPO',b.spd/mx('spd')],['DMG',b.dmg/mx('dmg')],['FEUER',Math.min(...BRS.map(x=>x.rate))/b.rate]];
-  document.getElementById('heroStats').innerHTML=st.map(([n,v])=>`<div class="hstat"><span>${n}</span><div class="hbar"><i style="width:${Math.round(Math.max(.12,Math.min(1,v))*100)}%"></i></div></div>`).join('');
-}
 const selEl = document.getElementById('sel');
 BRS.forEach((b, i) => {
   const c = document.createElement('div');
@@ -726,10 +681,9 @@ BRS.forEach((b, i) => {
   c.style.setProperty('--c', b.color);
   const m = MODELS[b.id];
   c.innerHTML = `<div class="trophy">🏆</div><div class="icon-wrap">${m ? modelSVG(m) : b.icon}</div><div class="name">${b.name}</div><div class="role">${b.role}</div>`;
-  c.onclick = () => { document.querySelectorAll('.brawler').forEach(x => x.classList.remove('on')); c.classList.add('on'); sel = b; updateHero(b); };
+  c.onclick = () => { document.querySelectorAll('.brawler').forEach(x => x.classList.remove('on')); c.classList.add('on'); sel = b; };
   selEl.appendChild(c);
 });
-updateHero(BRS[0]);
 document.getElementById('go').onclick = () => start();
 document.getElementById('nick').addEventListener('keydown', e => {
   e.stopPropagation();
@@ -746,6 +700,7 @@ const sfx = { shoot: () => beep(620, .028, 'square', .032, -300), hit: () => bee
 function flash(a = .1) { const el = document.getElementById('flash'); el.style.opacity = a; setTimeout(() => el.style.opacity = 0, 45); }
 
 const A = 1750;
+let MT={b1:'#0a0a1e',b2:'#03030c',grid:'rgba(0,255,210,.015)',wall:'rgba(0,255,210,.35)',of:'#061018',os:'rgba(0,210,255,.55)',og:'rgba(0,170,255,.35)'};
 let P, bullets, bots, parts, powers, obs, cam, time, over, last, hitstop, run = 0, streak = 0, streakT = 0;
 let fx = makeFX();
 let pLk = 0, pRec = 0;
@@ -1114,13 +1069,13 @@ function end(won) { over = 1; msg(won ? 'VICTORY<br><small style="font-size:13px
 
 function draw() {
   const g = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, Math.max(W, H) * .7);
-  g.addColorStop(0, '#0a0a1e'); g.addColorStop(1, '#03030c'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  g.addColorStop(0, MT.b1); g.addColorStop(1, MT.b2); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
   ctx.save(); ctx.translate(-cam.x, -cam.y);
-  ctx.strokeStyle = 'rgba(0,255,210,.015)'; ctx.lineWidth = 1;
+  ctx.strokeStyle = MT.grid; ctx.lineWidth = 1;
   for (let x = 0; x <= A; x += 60) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, A); ctx.stroke(); }
   for (let y = 0; y <= A; y += 60) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(A, y); ctx.stroke(); }
-  ctx.strokeStyle = 'rgba(0,255,210,.35)'; ctx.lineWidth = 6; ctx.shadowColor = 'rgba(0,255,210,.5)'; ctx.shadowBlur = 20; ctx.strokeRect(0, 0, A, A); ctx.shadowBlur = 0;
-  for (const o of obs) { ctx.shadowColor = 'rgba(0,170,255,.35)'; ctx.shadowBlur = 14; ctx.fillStyle = '#061018'; rr(ctx, o.x, o.y, o.w, o.h, 10); ctx.fill(); ctx.shadowBlur = 0; ctx.strokeStyle = 'rgba(0,210,255,.55)'; ctx.lineWidth = 2; rr(ctx, o.x, o.y, o.w, o.h, 10); ctx.stroke(); }
+  ctx.strokeStyle = MT.wall; ctx.lineWidth = 6; ctx.shadowColor = MT.wall; ctx.shadowBlur = 20; ctx.strokeRect(0, 0, A, A); ctx.shadowBlur = 0;
+  for (const o of obs) { ctx.shadowColor = MT.og; ctx.shadowBlur = 14; ctx.fillStyle = MT.of; rr(ctx, o.x, o.y, o.w, o.h, 10); ctx.fill(); ctx.shadowBlur = 0; ctx.strokeStyle = MT.os; ctx.lineWidth = 2; rr(ctx, o.x, o.y, o.w, o.h, 10); ctx.stroke(); }
   for (const p of powers) { const pu = 1 + Math.sin(p.pul) * .15; const cs = { heal: '#2ecc71', super: '#c084fc', rage: '#ff4d6d' }; const c = cs[p.type]; ctx.shadowColor = c; ctx.shadowBlur = 22; ctx.fillStyle = c; ctx.beginPath(); ctx.arc(p.x, p.y, 14 * pu, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0; ctx.fillStyle = '#fff'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(p.type === 'heal' ? '+' : p.type === 'super' ? '★' : '⚡', p.x, p.y); }
   for (const b of bullets) { for (const t of b.trail) { if (t.life <= 0) continue; ctx.globalAlpha = t.life * 5.5; ctx.fillStyle = b.col; ctx.beginPath(); ctx.arc(t.x, t.y, b.r * .4, 0, Math.PI * 2); ctx.fill(); } ctx.globalAlpha = 1; ctx.shadowColor = b.col; ctx.shadowBlur = b.pierce ? 18 : 10; ctx.fillStyle = b.col; ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0; }
   for (const p of parts) { ctx.globalAlpha = Math.max(0, p.life / p.max); ctx.fillStyle = p.col; ctx.beginPath(); ctx.arc(p.x, p.y, p.sz * (p.life / p.max), 0, Math.PI * 2); ctx.fill(); } ctx.globalAlpha = 1;
@@ -1182,6 +1137,7 @@ function loop(now) { if (!run) return; const dt = Math.min((now - last) / 1000, 
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
 <script>
 (() => {
   'use strict';
@@ -1528,14 +1484,211 @@ function loop(now) { if (!run) return; const dt = Math.min((now - last) / 1000, 
 })();
 </script>
 <script>
-(function(){
-  const panel=document.querySelector('.online-panel'),tabs=[...document.querySelectorAll('.oc-tab')];
-  function setTab(t){panel.dataset.tab=t;tabs.forEach(b=>b.setAttribute('aria-selected',b.dataset.t===t));panel.parentElement.scrollTop=0;}
-  tabs.forEach(b=>b.addEventListener('click',()=>{setTab(b.dataset.t);if(b.dataset.t==='rank'&&typeof refreshLeaderboard==='function'){}}));
-  const open=(id,t)=>document.getElementById(id).addEventListener('click',()=>setTab(t));
-  open('onlineOpen','account');open('leaderboardOpen','rank');open('settingsOpen','sound');
-  document.getElementById('lobbyOpen').addEventListener('click',()=>{document.getElementById('onlineOpen').click();setTab('lobby');});
-  setTab('account');
+(()=>{'use strict';
+/* ===== OVERCHARGE v2: RTDB · Ränge · Map-Roulette · Charge-Buttons ===== */
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const nm=()=>(($('nick').value||'Spieler').trim().slice(0,12))||'Spieler';
+const st=document.createElement('style');st.textContent=`
+#rankCard{display:flex;align-items:center;gap:10px;width:min(100%,360px);margin:10px auto 0;padding:9px 12px;border:1px solid rgba(160,180,220,.16);border-radius:14px;background:rgba(15,21,42,.7);text-align:left}
+#rbBadge{width:42px;height:42px;flex:0 0 42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:21px;border:2px solid var(--rc,#cd7f32);box-shadow:0 0 16px color-mix(in srgb,var(--rc,#cd7f32) 45%,transparent);background:rgba(0,0,0,.35)}
+#rankCard .rt{flex:1;min-width:0}#rbName{font-size:14px;font-weight:900;letter-spacing:.5px;color:var(--rc,#fff)}
+.rbar{height:6px;border-radius:4px;background:rgba(255,255,255,.08);margin:5px 0 3px;overflow:hidden}.rbar i{display:block;height:100%;width:0;background:var(--rc,#cd7f32);transition:width .6s}
+#rbSub{font-size:10px;color:#9aa8c5}
+.pod{display:flex;align-items:flex-end;justify-content:center;gap:6px;margin:10px auto 2px;width:min(100%,360px)}
+.pc{flex:1;min-width:0;text-align:center}.pm{font-size:20px}.pn{font-size:11px;font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#fff}
+.pr{font-size:9px;font-weight:800;margin:1px 0 3px;white-space:nowrap}
+.pb{border-radius:9px 9px 0 0;background:linear-gradient(180deg,rgba(255,255,255,.16),rgba(255,255,255,.04));border:1px solid rgba(255,255,255,.1);border-bottom:0;display:flex;align-items:flex-start;justify-content:center;padding-top:5px;font-size:11px;font-weight:900;color:#ffd866}
+.p1 .pb{height:78px;border-color:#ffd34d}.p2 .pb{height:58px}.p3 .pb{height:44px}
+#rtRows{display:flex;flex-direction:column;gap:5px;margin-top:8px}
+#wheel{position:fixed;inset:0;z-index:60;display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:rgba(4,6,16,.95);backdrop-filter:blur(8px)}
+#wheel.on{display:flex}#wheel h2{font-size:13px;letter-spacing:4px;color:#9aa8c5}
+.wv{position:relative;width:100%;height:150px;overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 15%,#000 85%,transparent);mask-image:linear-gradient(90deg,transparent,#000 15%,#000 85%,transparent)}
+.wt{position:absolute;left:0;top:8px;display:flex;gap:10px;will-change:transform}
+.wc{flex:0 0 120px;height:134px;border-radius:16px;border:2px solid var(--c);background:linear-gradient(160deg,var(--c1),#050812);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;font-size:11px;font-weight:900;color:#fff;transition:transform .3s,box-shadow .3s}
+.wc.win{transform:scale(1.1);box-shadow:0 0 36px var(--c)}
+.wm{position:absolute;left:50%;top:0;bottom:0;width:3px;background:#fff;box-shadow:0 0 18px #fff;transform:translateX(-50%);z-index:2}
+#wName{font-size:28px;font-weight:950;letter-spacing:2px;min-height:34px;text-align:center}#wDesc{font-size:12px;color:#9aa8c5;min-height:16px}
+#rpPop{position:absolute;left:50%;top:26%;transform:translate(-50%,0);z-index:70;text-align:center;pointer-events:none;opacity:0;transition:opacity .3s}
+#rpPop.on{opacity:1}#rpPop b{display:block;font-size:46px;font-weight:950;text-shadow:0 0 30px currentColor}#rpPop span{font-size:15px;font-weight:800;letter-spacing:2px}
+#bd,#bu,#bg{--p:100;isolation:isolate;opacity:.95!important;background:conic-gradient(var(--rc) calc(var(--p)*1%),rgba(255,255,255,.07) 0)!important;border:0!important;width:62px!important;height:62px!important;font-size:21px!important}
+#bd::before,#bu::before,#bg::before{content:'';position:absolute;inset:5px;border-radius:50%;background:#0a0e1e;z-index:-1}
+#bd{--rc:#288cff;right:20px!important}#bu{--rc:#c084fc;right:92px!important;width:76px!important;height:76px!important;font-size:26px!important;bottom:max(150px,calc(env(safe-area-inset-bottom) + 135px))!important}#bg{--rc:#ffbe28;right:180px!important}
+#bu.rdy{animation:rdy .8s ease-in-out infinite;color:#fff}
+@keyframes rdy{0%,100%{box-shadow:0 0 14px #c084fc,0 0 0 0 rgba(192,132,252,.6)}50%{box-shadow:0 0 34px #f472b6,0 0 0 9px rgba(192,132,252,0)}}
+#buc{font-size:8px;font-weight:900;color:#c084fc;position:absolute;bottom:-13px;left:50%;transform:translateX(-50%);white-space:nowrap}
+#bu.rdy #buc{color:#f9a8d4}
+`;document.head.appendChild(st);
+
+/* ===== RANGSYSTEM: Bronze 3 → Overcharged, je 100 RP pro Division ===== */
+const TIERS=[['BRONZE','#cd7f32','🥉'],['SILBER','#c8d0e0','🥈'],['GOLD','#ffd34d','🥇'],['PLATIN','#5ee7df','💠'],['DIAMANT','#6ab7ff','💎']];
+function rankInfo(rp){rp=Math.max(0,rp|0);
+  if(rp>=2500){const p=rp-2500;return{lvl:16,col:'#ff4dd2',ico:'⚡',pts:p,pct:100,name:'OVERCHARGED',short:'OVERCHARGED · '+p,sub:p+' RP'}}
+  if(rp>=1500){const p=rp-1500;return{lvl:15,col:'#c084fc',ico:'👑',pts:p,pct:p/10,name:'MEISTER',short:'MEISTER · '+p,sub:p+'/1000 RP bis Overcharged'}}
+  const i=Math.floor(rp/100),t=Math.floor(i/3),d=3-(i%3),p=rp%100,T=TIERS[t];
+  return{lvl:i,col:T[1],ico:T[2],pts:p,pct:p,name:T[0]+' '+d,short:T[0]+' '+d+' · '+p,sub:p+'/100 RP'};
+}
+let RP=+(localStorage.getItem('oc_rp_v1')||0)||0,user=null,fdb=null,fauth=null,online=0,board=[];
+const save=()=>{try{localStorage.setItem('oc_rp_v1',String(RP))}catch(e){}};
+try{fauth=firebase.auth();fdb=firebase.database();}catch(e){console.warn('RTDB nicht verfügbar:',e)}
+
+/* ===== UI einbauen ===== */
+const card=document.createElement('div');card.id='rankCard';
+card.innerHTML='<div id="rbBadge">🥉</div><div class="rt"><div id="rbName">BRONZE 3</div><div class="rbar"><i id="rbFill"></i></div><div id="rbSub"></div></div>';
+$('miniStats').after(card);
+const menuPod=document.createElement('div');menuPod.className='podium-host';$('sel').before(menuPod);
+const lobH=[...document.querySelectorAll('.online-section h3')].find(h=>h.textContent.includes('Lobby'));
+let lobPod=null;if(lobH){lobPod=document.createElement('div');lobPod.className='podium-host';lobH.after(lobPod);}
+const oldList=$('leaderboardList'),oldSec=oldList&&oldList.closest('.online-section');
+const sec=document.createElement('section');sec.className='online-section';
+sec.innerHTML='<h3>Top Piloten · Live <span id="onlineCnt" style="float:right;color:#9aa8c5;letter-spacing:0"></span></h3><div class="podium-host"></div><div id="rtRows"></div><div class="online-muted" style="margin-top:8px">Rang-Punkte (RP) gibt es nur mit Account. 100 RP = 1 Division · Bronze 3 → Diamant 1 → Meister → Overcharged.</div>';
+if(oldSec){oldSec.before(sec);oldSec.style.display='none';}
+$('leaderboardOpen').addEventListener('click',()=>setTimeout(()=>sec.scrollIntoView({block:'start',behavior:'smooth'}),90));
+const root=$('root');
+const pop=document.createElement('div');pop.id='rpPop';root.appendChild(pop);
+const wheel=document.createElement('div');wheel.id='wheel';
+wheel.innerHTML='<h2>MAP WIRD AUSGELOST</h2><div class="wv"><div class="wm"></div><div class="wt" id="wt"></div></div><div id="wName"></div><div id="wDesc"></div>';
+root.appendChild(wheel);
+const bu=$('bu'),bg=$('bg'),bd=$('bd');
+bu.insertAdjacentHTML('beforeend','<div id="buc">0%</div>');const buc=$('buc');
+
+function podHTML(l){return '<div class="pod">'+[1,0,2].map(i=>{const p=l[i],r=rankInfo(p?p.rp:0);
+  return `<div class="pc p${i+1}"><div class="pm">${['🥇','🥈','🥉'][i]}</div><div class="pn">${p?esc(p.name):'—'}</div><div class="pr" style="color:${r.col}">${p?r.short:'frei'}</div><div class="pb"><span>${p?p.rp:0}</span></div></div>`}).join('')+'</div>'}
+function renderBoard(){
+  const h=podHTML(board);document.querySelectorAll('.podium-host').forEach(e=>e.innerHTML=h);
+  $('rtRows').innerHTML=board.slice(3).map((p,i)=>{const r=rankInfo(p.rp),me=user&&p.uid===user.uid;
+    return `<div class="rank-row" style="${me?'border-color:#00ffd0':''}"><span class="rank-number">#${i+4}</span><span class="rank-player">${esc(p.name)}<small class="rank-sub" style="color:${r.col}">${r.short} · ${p.wins|0} Siege</small></span><span class="rank-score">${p.rp|0} RP</span></div>`}).join('')||(board.length?'':'<div class="online-muted">Noch keine Piloten. Melde dich an und sei der Erste!</div>');
+}
+function renderRank(){
+  const r=rankInfo(RP);card.style.setProperty('--rc',r.col);
+  $('rbBadge').textContent=r.ico;$('rbName').textContent=r.name+' · '+r.pts+' RP';
+  $('rbFill').style.width=Math.min(100,r.pct)+'%';
+  $('rbSub').textContent=(user?r.sub:r.sub+' · Gast (lokal)')+(online?' · 🟢 '+online+' online':'');
+  $('onlineCnt').textContent=online?'🟢 '+online+' online':'';
+}
+renderRank();renderBoard();
+
+/* ===== Firebase RTDB: Leaderboard live + Presence ===== */
+if(fdb){
+  fdb.ref('leaderboard').orderByChild('rp').limitToLast(10).on('value',s=>{const a=[];s.forEach(c=>{a.push({uid:c.key,...c.val()})});board=a.reverse();renderBoard()},e=>console.warn('Board:',e));
+  fdb.ref('presence').on('value',s=>{online=s.numChildren();renderRank()},()=>{});
+}
+fauth&&fauth.onAuthStateChanged(async u=>{user=u;
+  if(u&&fdb){
+    try{const ref=fdb.ref('leaderboard/'+u.uid),s=await ref.get();
+      if(s.exists()){RP=s.val().rp|0;save()}else await ref.set({name:nm(),rp:RP,wins:0,kills:0,matches:0,t:Date.now()});
+      const pr=fdb.ref('presence/'+u.uid);
+      fdb.ref('.info/connected').on('value',c=>{if(c.val()){pr.onDisconnect().remove();pr.set({n:nm(),t:Date.now()})}});
+    }catch(e){console.warn('RTDB Profil:',e)}
+  }
+  renderRank();renderBoard();
+});
+$('nick').addEventListener('change',()=>{if(user&&fdb)fdb.ref('leaderboard/'+user.uid+'/name').set(nm()).catch(()=>{})});
+
+/* ===== RP nach dem Match ===== */
+function popRP(d,a,b){
+  const up=b.lvl>a.lvl,dn=b.lvl<a.lvl;
+  pop.style.color=d>=0?'#64f5d2':'#ff8a9e';
+  pop.innerHTML=`<b>${d>=0?'+':''}${d} RP</b><span>${up?'⬆ AUFSTIEG · ':dn?'⬇ ABSTIEG · ':''}${b.ico} ${b.name} · ${b.pts} RP</span>`;
+  pop.classList.add('on');setTimeout(()=>pop.classList.remove('on'),3600);
+}
+function applyRP(won){
+  const k=Math.max(0,P.kills|0),a=rankInfo(RP),t=Math.min(4,Math.floor(RP/300));
+  const d=won?30+Math.min(14,k*2):-(12+t*3)+Math.min(8,k);
+  RP=Math.max(0,RP+d);save();
+  if(user&&fdb)fdb.ref('leaderboard/'+user.uid).transaction(c=>{c=c||{};c.name=nm();c.rp=Math.max(0,(c.rp||0)+d);c.wins=(c.wins||0)+(won?1:0);c.kills=(c.kills||0)+k;c.matches=(c.matches||0)+1;c.robot=window.__ocSelectedRobot||'nyx';c.t=Date.now();return c})
+    .then(r=>{if(r.snapshot.exists()){RP=r.snapshot.val().rp|0;save();renderRank()}}).catch(e=>console.warn('RP speichern:',e));
+  popRP(d,a,rankInfo(RP));renderRank();
+}
+
+/* ===== MAPS ===== */
+const O=a=>a.map(([x,y,w,h])=>({x,y,w,h}));
+const DEF=O([[140,140,130,130],[1480,140,130,130],[140,1480,130,130],[1480,1480,130,130],[740,90,270,42],[740,1618,270,42],[90,740,42,270],[1618,740,42,270],[420,420,110,110],[1220,420,110,110],[420,1220,110,110],[1220,1220,110,110],[770,770,210,210],[240,760,48,230],[1462,760,48,230],[760,240,230,48],[760,1462,230,48],[500,900,80,80],[1170,760,80,80],[900,500,80,80]]);
+const T0={b1:'#0a0a1e',b2:'#03030c',grid:'rgba(0,255,210,.015)',wall:'rgba(0,255,210,.35)',of:'#061018',os:'rgba(0,210,255,.55)',og:'rgba(0,170,255,.35)'};
+const pil=(xs,ys,s)=>{const r=[];for(const x of xs)for(const y of ys)if(!(x===875&&y===875))r.push([x-s/2,y-s/2,s,s]);return r};
+const MAPS=[
+ {id:'neon',name:'NEON GRID',desc:'Klassische Arena',accent:'#00ffd0',theme:T0,obs:DEF},
+ {id:'magma',name:'MAGMA CORE',desc:'Lava-Pools verbrennen dich',accent:'#ff6a2a',obs:O([[120,120,150,150],[1480,120,150,150],[120,1480,150,150],[1480,1480,150,150],[700,100,350,40],[700,1610,350,40],[100,700,40,350],[1610,700,40,350],[500,500,100,100],[1150,500,100,100],[500,1150,100,100],[1150,1150,100,100]]),
+  hz:[[420,875],[1330,875],[875,420],[875,1330]].map(([x,y])=>({x,y,r:105,dps:16,col:'#ff5a1e'})),
+  theme:{b1:'#2a0c06',b2:'#0a0302',grid:'rgba(255,120,40,.05)',wall:'rgba(255,110,40,.5)',of:'#1a0805',os:'rgba(255,120,50,.65)',og:'rgba(255,90,20,.4)'}},
+ {id:'frost',name:'FROST MAZE',desc:'Enge Gänge, viel Deckung',accent:'#8fdcff',obs:O([[300,420,420,40],[1030,420,420,40],[300,1290,420,40],[1030,1290,420,40],[420,560,40,260],[1290,930,40,260],[420,930,40,260],[1290,560,40,260],[150,150,90,90],[1510,150,90,90],[150,1510,90,90],[1510,1510,90,90],[700,700,60,60],[990,990,60,60]]),
+  theme:{b1:'#0c2238',b2:'#040a14',grid:'rgba(150,220,255,.05)',wall:'rgba(150,220,255,.5)',of:'#0a1a2a',os:'rgba(160,225,255,.7)',og:'rgba(120,200,255,.4)'}},
+ {id:'toxic',name:'TOXIC PLANT',desc:'Giftgas-Pools · Säulenfeld',accent:'#7dff5a',obs:O(pil([350,875,1400],[350,875,1400],90)),
+  hz:[[560,1190],[1190,560]].map(([x,y])=>({x,y,r:125,dps:10,col:'#5aff3c'})),
+  theme:{b1:'#0e2410',b2:'#030a04',grid:'rgba(120,255,80,.05)',wall:'rgba(120,255,90,.45)',of:'#07140a',os:'rgba(130,255,100,.6)',og:'rgba(80,255,60,.35)'}},
+ {id:'void',name:'OPEN VOID',desc:'Offen · Power-up-Regen',accent:'#c084fc',pw:1,obs:O([[200,200,120,120],[1430,200,120,120],[200,1430,120,120],[1430,1430,120,120],[600,600,70,70],[1080,600,70,70],[600,1080,70,70],[1080,1080,70,70]]),
+  theme:{b1:'#1c0e3a',b2:'#05020e',grid:'rgba(190,120,255,.05)',wall:'rgba(190,120,255,.5)',of:'#0d0720',os:'rgba(200,140,255,.65)',og:'rgba(160,90,255,.4)'}}
+];
+const prev=m=>`<svg viewBox="0 0 1750 1750" width="74" height="74" style="border-radius:8px;background:${(m.theme||T0).b1};border:1px solid ${m.accent}"><g fill="${m.accent}" opacity=".85">${m.obs.map(o=>`<rect x="${o.x}" y="${o.y}" width="${o.w}" height="${o.h}" rx="14"/>`).join('')}</g>${(m.hz||[]).map(h=>`<circle cx="${h.x}" cy="${h.y}" r="${h.r}" fill="${h.col}" opacity=".7"/>`).join('')}</svg>`;
+let curMap=MAPS[0],hz=[],spinning=false;
+function applyMap(m){
+  MT=m.theme||T0;obs=m.obs.map(o=>({...o}));hz=m.hz||[];
+  spawnBots();feed('Map: '+m.name);
+}
+
+/* ===== Map-Roulette (Karten fahren vorbei) ===== */
+function spinWheel(done){
+  const N=46,TG=38,win=Math.floor(Math.random()*MAPS.length),seq=[];
+  for(let i=0;i<N;i++){let k;do{k=Math.floor(Math.random()*MAPS.length)}while(i&&k===seq[i-1]);seq.push(i===TG?win:k)}
+  if(seq[TG-1]===win)seq[TG-1]=(win+1)%MAPS.length;if(seq[TG+1]===win)seq[TG+1]=(win+2)%MAPS.length;
+  const tr=$('wt');tr.innerHTML=seq.map((k,i)=>{const m=MAPS[k];return `<div class="wc" data-i="${i}" style="--c:${m.accent};--c1:${m.accent}33">${prev(m)}<span>${m.name}</span></div>`}).join('');
+  $('wName').textContent='';$('wDesc').textContent='';wheel.classList.add('on');
+  const cw=130,vw=innerWidth,end=TG*cw+60-vw/2+(Math.random()*60-30),dur=4400,t0=performance.now();let lastI=-1;
+  (function f(now){
+    const u=Math.min(1,(now-t0)/dur),e=1-Math.pow(1-u,4),pos=end*e;
+    tr.style.transform=`translateX(${-pos}px)`;
+    const ci=Math.floor((pos+vw/2)/cw);if(ci!==lastI){lastI=ci;try{aud();beep(260+(ci%8)*28,.03,'square',.035)}catch(e){}}
+    if(u<1)return requestAnimationFrame(f);
+    const m=MAPS[win];tr.children[TG].classList.add('win');
+    $('wName').textContent=m.name;$('wName').style.color=m.accent;$('wDesc').textContent=m.desc;
+    try{sfx.power();navigator.vibrate&&navigator.vibrate(40)}catch(e){}
+    setTimeout(()=>{wheel.classList.remove('on');done(m)},1300);
+  })(performance.now());
+}
+const os=window.start;
+window.start=function(){
+  if(spinning)return;
+  if(window.__mapGo){window.__mapGo=false;window.__rpDone=false;const r=os.apply(this,arguments);applyMap(curMap);return r}
+  spinning=true;try{aud()}catch(e){}
+  spinWheel(m=>{curMap=m;spinning=false;window.__mapGo=true;window.start()});
+};
+
+/* ===== Charge-Buttons, Hazards, passive Aufladung ===== */
+let rdy=false;
+const ou=window.update;
+window.update=function(dt){
+  ou.apply(this,arguments);
+  if(!run||over||!P)return;
+  if(P.alive)P.sup=Math.min(P.cost,P.sup+dt*2.4);
+  const sp=P.sup/P.cost*100,gp=P.gCd>0?(1-P.gCd/P.gMax)*100:100,dp=P.dCd>0?(1-P.dCd/P.dMax)*100:100;
+  bu.style.setProperty('--p',sp);bg.style.setProperty('--p',gp);bd.style.setProperty('--p',dp);
+  const ready=sp>=99.9;buc.textContent=ready?'READY':Math.floor(sp)+'%';bu.classList.toggle('rdy',ready);
+  if(ready&&!rdy){rdy=true;fDmg(P.x,P.y-56,'SUPER READY','#f0abfc');sfx.power();navigator.vibrate&&navigator.vibrate(30)}
+  if(!ready)rdy=false;
+  if(curMap.pw&&Math.random()<.012)spawnPow();
+  for(const h of hz){
+    if(P.alive&&P.inv<=0&&dist(P,h)<h.r){P.hp-=h.dps*dt;cam.sh=Math.max(cam.sh,1.5);if(Math.random()<.25)burst(P.x,P.y,h.col,2,90);
+      if(P.hp<=0){P.hp=0;P.alive=0;burst(P.x,P.y,P.col,70,500);flash(.2);end(0)}}
+    for(const b of bots)if(b.alive&&dist(b,h)<h.r)b.hp=Math.max(b.max*.18,b.hp-h.dps*dt*.8);
+  }
+};
+const od=window.draw;
+window.draw=function(){
+  od.apply(this,arguments);
+  if(!hz.length||!P)return;
+  const t=performance.now()/1000;ctx.save();ctx.translate(-cam.x,-cam.y);
+  for(const h of hz){
+    const g=ctx.createRadialGradient(h.x,h.y,h.r*.1,h.x,h.y,h.r);g.addColorStop(0,h.col+'aa');g.addColorStop(1,h.col+'11');
+    ctx.globalAlpha=.5+Math.sin(t*3+h.x)*.12;ctx.fillStyle=g;ctx.beginPath();ctx.arc(h.x,h.y,h.r,0,6.283);ctx.fill();
+    ctx.globalAlpha=.9;ctx.strokeStyle=h.col;ctx.lineWidth=3;ctx.setLineDash([14,10]);ctx.lineDashOffset=-t*30;ctx.stroke();ctx.setLineDash([]);
+  }
+  ctx.restore();
+};
+const oe=window.end;
+window.end=function(won){
+  if(!window.__rpDone){window.__rpDone=true;try{applyRP(!!won)}catch(e){console.warn(e)}}
+  return oe.apply(this,arguments);
+};
 })();
 </script>
 </body>
