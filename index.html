@@ -230,6 +230,75 @@ input,button{ -webkit-tap-highlight-color:transparent }
   #go{height:50px}
 }
 
+
+/* ===== SCROLL FIX: iOS / touch screens ===== */
+html,body{height:100%;min-height:0;overflow:hidden}
+/* The game uses a fixed viewport, so only the menu and dialog should scroll. */
+#menu{
+  position:absolute;inset:0;height:100%;min-height:0;
+  overflow-x:hidden!important;overflow-y:auto!important;
+  -webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;
+  touch-action:pan-y!important;
+  justify-content:flex-start!important;
+  scroll-padding-block:18px;
+}
+#menu *{touch-action:pan-y}
+#menu button,#menu .online-pill,#menu .brawler{touch-action:manipulation}
+#nick,#menu input,#menu textarea{touch-action:auto;-webkit-user-select:text;user-select:text}
+#onlineModal{
+  position:fixed;inset:0;height:100%;height:100dvh;
+  overflow-y:auto;overflow-x:hidden;
+  -webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;
+  touch-action:pan-y!important;
+  align-items:flex-start!important;justify-content:flex-start!important;
+  padding-top:max(12px,env(safe-area-inset-top));
+  padding-bottom:max(12px,env(safe-area-inset-bottom));
+}
+#onlineModal *{touch-action:pan-y}
+#onlineModal button{touch-action:manipulation}
+#onlineModal input,#onlineModal textarea{touch-action:auto;-webkit-user-select:text;user-select:text}
+.online-panel{
+  flex:0 0 auto;min-height:0;
+  width:min(100%,560px);
+  max-height:none!important;
+  margin:auto;
+  overflow-x:hidden!important;overflow-y:visible!important;
+  -webkit-overflow-scrolling:touch;
+  touch-action:pan-y!important;
+}
+/* Modal content is scrollable as a single surface, avoiding nested-scroll dead zones on iOS. */
+#onlineModal.open{display:flex;}
+#masterVolume{touch-action:pan-x!important}
+#sfxToggle{touch-action:manipulation!important}
+@media(max-height:820px){
+  #menu{gap:14px;padding-top:max(14px,env(safe-area-inset-top));padding-bottom:max(14px,env(safe-area-inset-bottom))}
+  .logo-area,.nick-wrap,.online-strip,.showcase,.play-wrap{flex-shrink:0}
+}
+
+
+/* ===== V2: Startseite + Tabs ===== */
+#menu::before{content:'';position:fixed;inset:-60px;background-image:linear-gradient(rgba(100,245,210,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(100,245,210,.05) 1px,transparent 1px);background-size:44px 44px;-webkit-mask-image:radial-gradient(ellipse at 50% 40%,#000 0%,transparent 70%);mask-image:radial-gradient(ellipse at 50% 40%,#000 0%,transparent 70%);animation:gridmove 14s linear infinite;pointer-events:none;z-index:0}
+@keyframes gridmove{to{transform:translate(44px,44px)}}
+#menu>*{position:relative;z-index:1}
+.logo{background-size:100% 200%;animation:logoshine 5s ease-in-out infinite}
+@keyframes logoshine{0%,100%{background-position:0 0}50%{background-position:0 35%}}
+.hero{width:min(100%,460px);margin:6px auto 0;display:flex;align-items:center;gap:14px;padding:12px 16px;border:1px solid rgba(148,171,220,.18);border-radius:22px;background:linear-gradient(155deg,rgba(27,34,62,.85),rgba(10,14,30,.92));box-shadow:0 14px 40px rgba(0,0,0,.3),0 0 40px color-mix(in srgb,var(--hc,#64f5d2) 14%,transparent);transition:box-shadow .3s,border-color .3s;border-color:color-mix(in srgb,var(--hc,#64f5d2) 40%,transparent)}
+.hero-art{width:clamp(90px,26vw,124px);height:clamp(90px,26vw,124px);flex:0 0 auto;filter:drop-shadow(0 0 14px var(--hc,#64f5d2));animation:herofloat 3.4s ease-in-out infinite}
+.hero-art svg{width:100%;height:100%}
+@keyframes herofloat{50%{transform:translateY(-5px) scale(1.03)}}
+.hero-info{flex:1;min-width:0}
+.hero-name{font-size:22px;font-weight:900;letter-spacing:2px;color:#fff}
+.hero-role{font-size:10px;letter-spacing:2.5px;text-transform:uppercase;color:var(--hc,#64f5d2);margin:1px 0 8px}
+.hstat{display:grid;grid-template-columns:44px 1fr;align-items:center;gap:8px;font-size:9px;letter-spacing:1px;color:#9aa8c5;margin-top:4px}
+.hbar{height:6px;border-radius:4px;background:rgba(255,255,255,.07);overflow:hidden}
+.hbar i{display:block;height:100%;border-radius:4px;background:linear-gradient(90deg,var(--hc,#64f5d2),#fff);transition:width .4s}
+.online-strip{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+.oc-tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:0 0 6px;padding:5px;border:1px solid rgba(148,171,220,.14);border-radius:14px;background:rgba(255,255,255,.03)}
+.oc-tab{min-height:40px;border:0;border-radius:10px;background:transparent;color:#9aa8c5;font-size:10px;font-weight:800;letter-spacing:.8px;cursor:pointer;transition:background .18s,color .18s}
+.oc-tab[aria-selected=true]{background:linear-gradient(135deg,rgba(100,245,210,.22),rgba(120,169,255,.14));color:#fff;box-shadow:inset 0 0 0 1px rgba(100,245,210,.35)}
+.online-section[data-tab]{display:none}
+.online-panel[data-tab=account] .online-section[data-tab=account],.online-panel[data-tab=lobby] .online-section[data-tab=lobby],.online-panel[data-tab=rank] .online-section[data-tab=rank],.online-panel[data-tab=sound] .online-section[data-tab=sound]{display:block}
+@media(max-width:380px){.online-pill span{font-size:8px}.hero{padding:10px}}
 </style>
 </head>
 <body>
@@ -246,9 +315,11 @@ input,button{ -webkit-tap-highlight-color:transparent }
         <button class="online-pill primary" id="onlineOpen"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>ACCOUNT</span></button>
         <button class="online-pill" id="leaderboardOpen"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 21h8m-4-4v4M7 4h10v5a5 5 0 0 1-10 0V4Z"/><path d="M7 6H4v2a4 4 0 0 0 4 4m9-6h3v2a4 4 0 0 1-4 4"/></svg><span>RANGLISTE</span></button>
         <button class="online-pill" id="settingsOpen"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="m19.4 15 .1.1 1.4 1.1-1.4 2.4-1.7-.7a8 8 0 0 1-1.8 1l-.3 1.8h-2.8l-.3-1.8a8 8 0 0 1-1.8-1l-1.7.7-1.4-2.4L7.1 15a7 7 0 0 1 0-2l-1.4-1.1 1.4-2.4 1.7.7a8 8 0 0 1 1.8-1l.3-1.8h2.8l.3 1.8a8 8 0 0 1 1.8 1l1.7-.7 1.4 2.4-1.4 1.1a7 7 0 0 1-.1 2Z"/></svg><span>SOUND</span></button>
+        <button class="online-pill" id="lobbyOpen"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20v-1.5a4.5 4.5 0 0 1 4.5-4.5h4a4.5 4.5 0 0 1 4.5 4.5V20M16 4.5a3.5 3.5 0 0 1 0 7M21.5 20v-1.5a4.5 4.5 0 0 0-3-4.2"/></svg><span>LOBBY</span></button>
       </div>
       <div id="miniStats">Gastprofil · lokal</div>
     </div>
+    <div class="hero" id="hero"><div class="hero-art" id="heroArt"></div><div class="hero-info"><div class="hero-name" id="heroName"></div><div class="hero-role" id="heroRole"></div><div id="heroStats"></div></div></div>
     <div class="showcase" id="sel"></div>
     <div class="play-wrap"><button id="go">FIGHT</button></div>
     <div class="hint">Wähle deinen Roboter · Tippe deinen Namen</div>
@@ -274,9 +345,10 @@ input,button{ -webkit-tap-highlight-color:transparent }
   </div>
 
   <div id="onlineModal" aria-hidden="true">
-    <section class="online-panel" role="dialog" aria-modal="true" aria-label="Online Lobby">
+    <section class="online-panel" data-tab="account" role="dialog" aria-modal="true" aria-label="Online Lobby">
       <div class="online-head"><div><div class="online-title">OVERCHARGE ONLINE</div><div class="online-muted">Profil · Matchmaking · Rangliste</div></div><button id="onlineClose" aria-label="Schließen">×</button></div>
-      <section class="online-section">
+      <div class="oc-tabs" role="tablist"><button class="oc-tab" data-t="account" role="tab">ACCOUNT</button><button class="oc-tab" data-t="lobby" role="tab">LOBBY</button><button class="oc-tab" data-t="rank" role="tab">RANGLISTE</button><button class="oc-tab" data-t="sound" role="tab">SOUND</button></div>
+      <section class="online-section" data-tab="account">
         <h3>Dein Account</h3>
         <div id="authSignedOut">
           <input class="online-input" id="authName" maxlength="12" placeholder="Spielername" autocomplete="nickname" />
@@ -287,13 +359,13 @@ input,button{ -webkit-tap-highlight-color:transparent }
         <div id="authSignedIn" class="hidden"><div><div class="account-name" id="accountName">Angemeldet</div><div class="account-detail" id="accountDetail">Profil wird geladen …</div></div><button class="online-action danger" id="logoutBtn">ABMELDEN</button></div>
         <div id="authStatus" class="online-status" aria-live="polite"></div>
       </section>
-      <section class="online-section" id="soundSettings">
+      <section class="online-section" id="soundSettings" data-tab="sound">
         <h3><svg class="ui-icon" viewBox="0 0 24 24" style="vertical-align:middle;margin-right:5px"><path d="M11 5 6 9H3v6h3l5 4V5Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7m3-10a9 9 0 0 1 0 13"/></svg>Sound-Optionen</h3>
         <div class="sound-row"><label for="masterVolume">Gesamtlautstärke <strong id="volumeValue">70%</strong></label><input id="masterVolume" type="range" min="0" max="100" value="70"/></div>
         <div class="sound-row"><label for="sfxToggle">Spiel-Soundeffekte</label><input id="sfxToggle" type="checkbox" checked/></div>
         <div class="online-muted">Änderungen werden automatisch auf diesem Gerät gespeichert.</div>
       </section>
-      <section class="online-section">
+      <section class="online-section" data-tab="lobby">
         <h3>Lobby · 10 Plätze</h3>
         <div class="online-muted">Die Lobby bleibt mit Bots aufgefüllt. Jeder echte Spieler ersetzt genau einen Bot.</div>
         <div class="online-actions"><button class="online-action" id="quickJoin">⚡ QUICK JOIN</button><button class="online-action" id="createRoom">＋ RAUM ERSTELLEN</button></div>
@@ -305,7 +377,7 @@ input,button{ -webkit-tap-highlight-color:transparent }
         </div>
         <div id="roomNotice" class="online-status" aria-live="polite"></div>
       </section>
-      <section class="online-section">
+      <section class="online-section" data-tab="rank">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><h3 style="margin:0">Top Piloten</h3><button class="online-action secondary" id="refreshRank" style="padding:7px 10px">AKTUALISIEREN</button></div>
         <div class="online-muted" style="margin:7px 0">Sortiert nach Trophäen. Anmeldung erforderlich, um deinen Fortschritt cloudbasiert zu speichern.</div>
         <ol id="leaderboardList"><li class="online-muted" style="padding:10px">Rangliste wird geladen …</li></ol>
@@ -360,19 +432,28 @@ const MODEL_IDS=Object.keys(MODELS);
 
 function drawModel(c,m,x,y,r,a,t=0){
   c.save();c.translate(x,y);c.rotate(a);c.scale(r,r);
-  c.lineWidth=.05;c.lineJoin='round';c.strokeStyle='rgba(0,0,0,.55)';
+  c.lineWidth=.05;c.lineJoin='round';c.strokeStyle='rgba(0,0,0,.6)';
+  const gl=c.createRadialGradient(0,0,.2,0,0,1.5);gl.addColorStop(0,m.c.b+(Math.sin(t*4)>0?'55':'40'));gl.addColorStop(1,m.c.b+'00');
+  c.fillStyle=gl;c.beginPath();c.arc(0,0,1.5,0,6.283);c.fill();
+  const sh=c.createLinearGradient(-.9,-.9,.9,.9);sh.addColorStop(0,'rgba(255,255,255,.38)');sh.addColorStop(.5,'rgba(255,255,255,0)');sh.addColorStop(1,'rgba(0,0,0,.38)');
   for(const s of m.s){
     c.save();if(s.o)c.rotate(t*s.o);
     c.fillStyle=m.c[s.k];c.shadowColor=m.c.g;c.shadowBlur=s.k==='g'?r*.5:0;c.beginPath();
     if(s.p)s.p.forEach(([u,v],i)=>i?c.lineTo(u,v):c.moveTo(u,v)),c.closePath();else c.arc(s.x,s.y,s.r,0,6.283);
-    c.fill();c.shadowBlur=0;c.stroke();c.restore();
+    c.fill();c.shadowBlur=0;
+    if(s.k!=='g'){c.fillStyle=sh;c.fill();}
+    c.stroke();c.restore();
   }
   c.restore();
 }
+let _svgN=0;
 function modelSVG(m){
-  let o=`<svg viewBox="-1.25 -1.25 2.5 2.5" xmlns="http://www.w3.org/2000/svg"><g transform="rotate(-90)" stroke="rgba(0,0,0,.55)" stroke-width=".05" stroke-linejoin="round">`;
+  const id='mg'+(_svgN++);
+  let o=`<svg viewBox="-1.25 -1.25 2.5 2.5" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="-.9" y1="-.9" x2=".9" y2=".9"><stop offset="0" stop-color="#fff" stop-opacity=".38"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".38"/></linearGradient><radialGradient id="${id}r"><stop offset=".15" stop-color="${m.c.b}" stop-opacity=".35"/><stop offset="1" stop-color="${m.c.b}" stop-opacity="0"/></radialGradient></defs><circle r="1.25" fill="url(#${id}r)"/><g transform="rotate(-90)" stroke="rgba(0,0,0,.6)" stroke-width=".05" stroke-linejoin="round">`;
   for(const s of m.s){
-    const f=m.c[s.k],e=s.p?`<polygon points="${s.p.join(' ')}" fill="${f}"/>`:`<circle cx="${s.x}" cy="${s.y}" r="${s.r}" fill="${f}"/>`;
+    const f=m.c[s.k],sh=s.k==='g'?'':'<!--S-->';
+    let e=s.p?`<polygon points="${s.p.join(' ')}" fill="${f}"/>`:`<circle cx="${s.x}" cy="${s.y}" r="${s.r}" fill="${f}"/>`;
+    if(s.k!=='g')e+=e.replace(/fill="[^"]*"/,`fill="url(#${id})" stroke="none"`);
     o+=s.o?`<g>${e}<animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="${(6.283/s.o).toFixed(1)}s" repeatCount="indefinite"/></g>`:e;
   }
   return o+'</g></svg>';
@@ -629,6 +710,15 @@ const BRS = [
 ];
 
 let sel = BRS[0];
+function updateHero(b){
+  const m=MODELS[b.id],h=document.getElementById('hero'),mx=k=>Math.max(...BRS.map(x=>x[k]));
+  h.style.setProperty('--hc',b.color);
+  document.getElementById('heroArt').innerHTML=m?modelSVG(m):b.icon;
+  document.getElementById('heroName').textContent=b.name;
+  document.getElementById('heroRole').textContent=b.role;
+  const st=[['HP',b.hp/mx('hp')],['TEMPO',b.spd/mx('spd')],['DMG',b.dmg/mx('dmg')],['FEUER',Math.min(...BRS.map(x=>x.rate))/b.rate]];
+  document.getElementById('heroStats').innerHTML=st.map(([n,v])=>`<div class="hstat"><span>${n}</span><div class="hbar"><i style="width:${Math.round(Math.max(.12,Math.min(1,v))*100)}%"></i></div></div>`).join('');
+}
 const selEl = document.getElementById('sel');
 BRS.forEach((b, i) => {
   const c = document.createElement('div');
@@ -636,9 +726,10 @@ BRS.forEach((b, i) => {
   c.style.setProperty('--c', b.color);
   const m = MODELS[b.id];
   c.innerHTML = `<div class="trophy">🏆</div><div class="icon-wrap">${m ? modelSVG(m) : b.icon}</div><div class="name">${b.name}</div><div class="role">${b.role}</div>`;
-  c.onclick = () => { document.querySelectorAll('.brawler').forEach(x => x.classList.remove('on')); c.classList.add('on'); sel = b; };
+  c.onclick = () => { document.querySelectorAll('.brawler').forEach(x => x.classList.remove('on')); c.classList.add('on'); sel = b; updateHero(b); };
   selEl.appendChild(c);
 });
+updateHero(BRS[0]);
 document.getElementById('go').onclick = () => start();
 document.getElementById('nick').addEventListener('keydown', e => {
   e.stopPropagation();
@@ -1434,6 +1525,17 @@ function loop(now) { if (!run) return; const dt = Math.min((now - last) / 1000, 
   }catch(e){console.error('Firebase init:',e);setStatus('authStatus','Firebase-Konfiguration konnte nicht initialisiert werden.',true);setStatus('roomNotice','Firebase ist nicht verbunden.',true);}
   updateStatsUI();
   if(!firebaseReady)setTimeout(()=>{if(!firebaseReady)setStatus('authStatus','Firebase konnte nicht initialisiert werden. Prüfe SDK und Konfiguration.',true);},1500);
+})();
+</script>
+<script>
+(function(){
+  const panel=document.querySelector('.online-panel'),tabs=[...document.querySelectorAll('.oc-tab')];
+  function setTab(t){panel.dataset.tab=t;tabs.forEach(b=>b.setAttribute('aria-selected',b.dataset.t===t));panel.parentElement.scrollTop=0;}
+  tabs.forEach(b=>b.addEventListener('click',()=>{setTab(b.dataset.t);if(b.dataset.t==='rank'&&typeof refreshLeaderboard==='function'){}}));
+  const open=(id,t)=>document.getElementById(id).addEventListener('click',()=>setTab(t));
+  open('onlineOpen','account');open('leaderboardOpen','rank');open('settingsOpen','sound');
+  document.getElementById('lobbyOpen').addEventListener('click',()=>{document.getElementById('onlineOpen').click();setTab('lobby');});
+  setTab('account');
 })();
 </script>
 </body>
