@@ -1757,37 +1757,104 @@ window.rankAnim=function(from,to,detail){$('rkDetail').textContent=detail||'';
   })(performance.now());
 };
 
-/* ---------- LIVE ARENA (wie dein Cursor-Teilen: 1 Knoten pro Spieler, 1 onValue, kein Login nötig) ---------- */
-const LIVE={rid:null,att:false,sid:null,R:{},B:[],host:false,ready:false,dead:0,deaths:0,hk:0,exiting:false,iv:null,bv:null,off:[],q:[],seq:0,dq:0,death:null,lastS:null,shotT:0};
+/* ---------- ONLINE LOBBY + SYNCHRONER MATCH-START ---------- */
+const LIVE={rid:null,sid:null,base:null,me:null,att:false,R:{},B:[],host:false,ready:false,dead:0,deaths:0,hk:0,exiting:false,iv:null,bv:null,hb:null,lobOff:[],off:[],q:[],seq:0,dq:0,death:null,lastS:null,shotT:0,roster:{},rcount:1,startAt:0,dur:150,starting:false,meta:null,lp:[]};
 let sOff=0;if(fdb)fdb.ref('.info/serverTimeOffset').on('value',s=>{sOff=s.val()||0});
 const now=()=>Date.now()+sOff;
 const fresh=v=>v&&typeof v.x==='number'&&now()-(v.t||0)<8000;
-const btn=document.createElement('button');btn.id='liveGo';btn.textContent='🌐 LIVE ARENA';$('go').after(btn);
-const lm=document.createElement('div');lm.id='liveMsg';btn.after(lm);
+const st2=document.createElement('style');st2.textContent=`
+#lobby{position:fixed;inset:0;z-index:55;display:none;overflow:auto;background:rgba(5,7,18,.98);padding:max(16px,env(safe-area-inset-top)) 14px 24px;touch-action:pan-y}#lobby.on{display:block}
+#lobby *{touch-action:pan-y}#lobby button,#lobby input{touch-action:manipulation}
+.lbw{max-width:460px;margin:0 auto;text-align:center;color:#fff}.lbw h2{font-size:15px;letter-spacing:4px;color:#9aa8c5;margin:6px 0 14px}
+#lbCode{font-size:36px;font-weight:950;letter-spacing:9px;color:#64f5d2;text-shadow:0 0 26px rgba(100,245,210,.4)}
+.lbgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin:14px 0}
+.lbs{display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:12px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.035);font-size:11px;font-weight:800;text-align:left;min-width:0}
+.lbs svg{width:30px;height:30px;flex:0 0 30px}.lbs span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.lbs small{display:block;font-size:8px;color:#8a97b4;letter-spacing:.6px}
+.lbs.bot{opacity:.42}.lbs.me{border-color:#64f5d2;background:rgba(100,245,210,.07)}
+#lbStart{width:100%;height:56px;margin-top:4px;border:0;border-radius:16px;font-size:20px;font-weight:950;letter-spacing:2px;color:#fff;cursor:pointer;background:linear-gradient(180deg,#5cff6a,#00a844);box-shadow:0 5px 0 #007a30;touch-action:manipulation}
+#lbStart:disabled{opacity:.5}#lbWait{font-size:12px;color:#9aa8c5;padding:14px 0}
+#cdOv{position:fixed;inset:0;z-index:62;display:none;align-items:center;justify-content:center;font-size:120px;font-weight:950;color:#fff;text-shadow:0 0 50px #64f5d2;pointer-events:none}#cdOv.on{display:flex}`;document.head.appendChild(st2);
+const lobby=document.createElement('div');lobby.id='lobby';
+lobby.innerHTML=`<div class="lbw"><h2>ONLINE LOBBY</h2>
+<div id="lbMenu"><button class="online-action" id="lbQuick" style="width:100%;margin:6px 0;min-height:50px;font-size:13px">⚡ QUICK MATCH</button>
+<button class="online-action" id="lbCreate" style="width:100%;margin:6px 0;min-height:50px;font-size:13px">＋ RAUM ERSTELLEN</button>
+<div style="display:flex;gap:7px;margin-top:6px"><input class="online-input" id="lbCodeIn" style="margin:0;flex:1;min-width:0;text-align:center;letter-spacing:4px;font-weight:900" inputmode="numeric" maxlength="5" placeholder="5-STELLIGER CODE"/><button class="online-action" id="lbJoin" style="min-width:96px">BEITRETEN</button></div></div>
+<div id="lbRoom" class="hidden"><div class="online-muted">RAUMCODE</div><div id="lbCode">-----</div><div id="lbInfo" class="online-muted" style="margin-top:6px"></div>
+<div class="lbgrid" id="lbGrid"></div><button id="lbStart">▶ MATCH STARTEN</button><div id="lbWait" class="hidden">Warte auf den Host …</div>
+<div class="online-actions"><button class="online-action secondary" id="lbCopy">CODE KOPIEREN</button><button class="online-action danger" id="lbLeave">VERLASSEN</button></div></div>
+<div id="lbMsg" class="online-status"></div><button class="online-action secondary" id="lbClose" style="margin-top:14px;width:100%">← ZURÜCK ZUM MENÜ</button></div>`;
+document.body.appendChild(lobby);
+const cd=document.createElement('div');cd.id='cdOv';document.body.appendChild(cd);
+const btn=document.createElement('button');btn.id='liveGo';btn.textContent='🌐 ONLINE LOBBY';$('go').after(btn);
 const lb=document.createElement('div');lb.id='liveBoard';$('ui').appendChild(lb);
-const ex=document.createElement('button');ex.id='liveExit';ex.textContent='✕ ARENA VERLASSEN';$('hud').appendChild(ex);
-const say=t=>lm.textContent=t;
-const fail=e=>{const m=(e&&(e.code==='PERMISSION_DENIED'||/permission/i.test(e.message||'')))?'⚠ Rules: Pfad "live" muss lesbar+schreibbar sein':'⚠ '+((e&&e.message)||e);if(LIVE.rid)feed(m);else say(m)};
+const ex=document.createElement('button');ex.id='liveExit';ex.textContent='✕ MATCH VERLASSEN';$('hud').appendChild(ex);
+const lmsg=t=>{$('lbMsg').textContent=t||''};
+const fail=e=>{const m=(e&&(e.code==='PERMISSION_DENIED'||/permission/i.test(e.message||'')))?'⚠ Rules: Pfad "rooms2" muss lesbar+schreibbar sein':'⚠ '+((e&&e.message)||e);if(LIVE.att)feed(m);else lmsg(m)};
+const nm2=()=>(($('nick').value||'Spieler').trim().slice(0,12))||'Spieler';
+const lobObj=()=>({x:0,y:0,a:0,hp:100,m:100,al:1,mo:sel.id,c:sel.color,n:nm2(),k:0,h:0,t:now()});
+const showView=room=>{$('lbMenu').classList.toggle('hidden',!!room);$('lbRoom').classList.toggle('hidden',!room)};
+btn.addEventListener('click',()=>{if(!fdb)return alert('Firebase Realtime Database nicht verfügbar.');lmsg('');showView(!!LIVE.rid);lobby.classList.add('on')});
+$('lbClose').addEventListener('click',()=>{if(LIVE.rid&&!LIVE.att)leaveLobby();lobby.classList.remove('on')});
+$('lbCodeIn').addEventListener('input',e=>{e.target.value=e.target.value.replace(/\D/g,'').slice(0,5)});
 
-btn.addEventListener('click',async()=>{
-  if(!fdb)return say('Firebase Realtime Database nicht verfügbar.');
-  if(LIVE.rid)return;
-  try{
-    say('Verbinde …');
-    if(fauth&&!fauth.currentUser){try{await fauth.signInAnonymously()}catch(e){}}
-    const sid=(fauth&&fauth.currentUser&&fauth.currentUser.uid)||('g'+Math.random().toString(36).slice(2,10));
-    let rid=null;
-    for(let i=0;i<8&&!rid;i++){const s=await fdb.ref('live/r'+i+'/pl').get();if(Object.values(s.val()||{}).filter(fresh).length<10)rid='r'+i}
-    if(!rid)return say('Alle Arenen voll – gleich nochmal versuchen.');
-    let mi=0;try{const mr=fdb.ref('live/'+rid+'/meta/map');await mr.transaction(c=>c==null?Math.floor(Math.random()*oc.MAPS.length):c);mi=(await mr.get()).val()|0}catch(e){}
-    Object.assign(LIVE,{rid,sid,att:false,R:{},B:[],host:false,ready:false,deaths:0,dead:0,hk:0,q:[],death:null,lastS:null,exiting:false});say('');
-    oc.spin(m=>{oc.setMap(m);window.__mapGo=true;window.start()},mi);
-  }catch(e){LIVE.rid=null;fail(e)}
+async function ensureSid(){if(fauth&&!fauth.currentUser){try{await fauth.signInAnonymously()}catch(e){}}
+  return LIVE.sid=(fauth&&fauth.currentUser&&fauth.currentUser.uid)||LIVE.sid||('g'+Math.random().toString(36).slice(2,10))}
+const hostId=()=>{const m=LIVE.meta||{};return LIVE.lp.some(p=>p.id===m.host)?m.host:(LIVE.lp[0]&&LIVE.lp[0].id)};
+
+async function enter(code,create){
+  const sid=await ensureSid(),base=fdb.ref('rooms2/'+code);
+  if(create)await base.child('meta').set({host:sid,state:'lobby',t:now()});
+  else{const m=(await base.child('meta').get()).val();if(!m)throw new Error('Lobby nicht gefunden.');if(m.state!=='lobby')throw new Error('Dort läuft schon ein Match.');
+    if(Object.values((await base.child('pl').get()).val()||{}).filter(fresh).length>=10)throw new Error('Lobby ist voll.')}
+  Object.assign(LIVE,{rid:code,base,me:base.child('pl/'+sid),starting:false,meta:null,lp:[],roster:{}});
+  LIVE.me.onDisconnect().remove();await LIVE.me.set(lobObj());
+  LIVE.hb=setInterval(()=>LIVE.me.set(lobObj()).catch(fail),2000);
+  const on=(ref,fn)=>{ref.on('value',fn,fail);LIVE.lobOff.push(()=>ref.off('value',fn))};
+  on(base.child('pl'),s=>{LIVE.lp=Object.entries(s.val()||{}).filter(([,v])=>fresh(v)).map(([id,v])=>({id,...v})).sort((a,b)=>a.id<b.id?-1:1);renderLobby()});
+  on(base.child('meta'),s=>{LIVE.meta=s.val();if(!LIVE.meta){leaveLobby('Lobby wurde geschlossen.');return}renderLobby();if(LIVE.meta.state==='playing')beginMatch()});
+  showView(true);lmsg('');
+}
+function renderLobby(){
+  if(!LIVE.rid||LIVE.att)return;
+  $('lbCode').textContent=LIVE.rid;const n=LIVE.lp.length,h=hostId(),isH=h===LIVE.sid;
+  $('lbInfo').textContent=`${n}/10 Spieler · ${10-n} Bots füllen auf`;
+  $('lbGrid').innerHTML=LIVE.lp.map(p=>`<div class="lbs${p.id===LIVE.sid?' me':''}">${MODELS[p.mo]?modelSVG(MODELS[p.mo]):''}<span>${String(p.n||'Pilot').replace(/</g,'')}<small>${p.id===h?'👑 HOST':p.id===LIVE.sid?'DU':'SPIELER'}</small></span></div>`).join('')
+   +Array.from({length:10-n},(_,i)=>`<div class="lbs bot"><span>Bot ${i+1}<small>KI</small></span></div>`).join('');
+  $('lbStart').classList.toggle('hidden',!isH);$('lbWait').classList.toggle('hidden',isH);
+}
+$('lbQuick').addEventListener('click',async()=>{try{lmsg('Suche Lobby …');const sid=await ensureSid(),rooms=(await fdb.ref('rooms2').limitToLast(25).get()).val()||{};
+  for(const code of Object.keys(rooms)){const r=rooms[code];if(!r.meta||r.meta.state!=='lobby')continue;const n=Object.values(r.pl||{}).filter(fresh).length;
+    if(n>0&&n<10){try{await enter(code,false);return}catch(e){}}}
+  await createNew()}catch(e){fail(e)}});
+async function createNew(){for(let i=0;i<6;i++){const c=String(Math.floor(10000+Math.random()*90000));if(!(await fdb.ref('rooms2/'+c+'/meta').get()).exists()){await enter(c,true);return}}throw new Error('Kein freier Code.')}
+$('lbCreate').addEventListener('click',()=>createNew().catch(fail));
+$('lbJoin').addEventListener('click',()=>{const c=$('lbCodeIn').value;if(c.length!==5)return lmsg('Code hat 5 Ziffern.');enter(c,false).catch(e=>lmsg(e.message))});
+$('lbCopy').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(LIVE.rid);lmsg('Code kopiert: '+LIVE.rid)}catch(e){lmsg('Dein Code: '+LIVE.rid)}});
+$('lbLeave').addEventListener('click',()=>leaveLobby());
+async function leaveLobby(m){
+  LIVE.lobOff.forEach(f=>f());LIVE.lobOff=[];clearInterval(LIVE.hb);
+  const base=LIVE.base,me=LIVE.me;Object.assign(LIVE,{rid:null,base:null,me:null,starting:false,lp:[],meta:null});
+  try{if(me)await me.remove();if(base&&!Object.values((await base.child('pl').get()).val()||{}).some(fresh))await base.remove()}catch(e){}
+  showView(false);lmsg(m||'');
+}
+$('lbStart').addEventListener('click',async()=>{
+  if(hostId()!==LIVE.sid)return;const roster={};LIVE.lp.forEach(p=>roster[p.id]=1);$('lbStart').disabled=true;
+  try{await LIVE.base.child('meta').update({state:'playing',map:Math.floor(Math.random()*oc.MAPS.length),startAt:now()+7500,roster,dur:150})}catch(e){fail(e)}
+  setTimeout(()=>{$('lbStart').disabled=false},3000);
 });
+function beginMatch(){
+  const m=LIVE.meta;if(LIVE.starting)return;
+  if(!m.roster||!m.roster[LIVE.sid]){leaveLobby('Match läuft bereits.');return}
+  LIVE.starting=true;LIVE.roster=m.roster;LIVE.rcount=Object.keys(m.roster).length;LIVE.startAt=m.startAt;LIVE.dur=m.dur||150;
+  LIVE.lobOff.forEach(f=>f());LIVE.lobOff=[];lobby.classList.remove('on');
+  oc.spin(map=>{oc.setMap(map);const iv=setInterval(()=>{const rem=LIVE.startAt-now();
+    if(rem<=0){clearInterval(iv);cd.textContent='GO!';setTimeout(()=>cd.classList.remove('on'),500);window.__mapGo=true;window.start()}
+    else{cd.classList.add('on');cd.textContent=Math.ceil(rem/1000)}},80)},m.map|0);
+}
 
+/* ---------- Match ---------- */
 const os=window.start;
-window.start=function(){const r=os.apply(this,arguments);if(LIVE.rid&&!LIVE.att&&run)attach();return r};
-
+window.start=function(){const r=os.apply(this,arguments);if(LIVE.rid&&LIVE.starting&&!LIVE.att&&run)attach();return r};
 function track(r,x,y){const t=performance.now(),dt=(t-(r.lt||t))/1000;
   if(dt>.01&&dt<.5){r.vx=Math.max(-700,Math.min(700,(x-r.tx)/dt));r.vy=Math.max(-700,Math.min(700,(y-r.ty)/dt))}else{r.vx=0;r.vy=0}
   r.lt=t;r.tx=x;r.ty=y}
@@ -1795,18 +1862,18 @@ function shots(r,s){const lat=Math.max(0,Math.min(.3,(now()-s.t)/1000));
   for(const b of s.b)bullets.push({x:b[0]+b[2]*lat,y:b[1]+b[3]*lat,vx:b[2],vy:b[3],dmg:b[4],r:b[5],col:b[6],life:b[7]-lat,fp:0,pierce:0,trail:[],hit:new Set(),owner:r,_s:1})}
 
 function attach(){
-  LIVE.att=true;LIVE.t0=Date.now();bots=[];
-  const sid=LIVE.sid,base=fdb.ref('live/'+LIVE.rid),R=LIVE.R,me=base.child('pl/'+sid);
-  me.onDisconnect().remove();
-  const spawn=()=>{let x,y,ok;do{x=200+Math.random()*(A-400);y=200+Math.random()*(A-400);ok=1;for(const o of obs)if(cRect(x,y,40,o.x,o.y,o.w,o.h))ok=0}while(!ok);P.x=x;P.y=y};spawn();
+  clearInterval(LIVE.hb);LIVE.att=true;LIVE.t0=Date.now();bots=[];
+  const sid=LIVE.sid,base=LIVE.base,R=LIVE.R,me=LIVE.me;
+  const rnd=()=>{let x,y,ok;do{x=200+Math.random()*(A-400);y=200+Math.random()*(A-400);ok=1;for(const o of obs)if(cRect(x,y,40,o.x,o.y,o.w,o.h))ok=0}while(!ok);P.x=x;P.y=y};
+  const idx=Object.keys(LIVE.roster).sort().indexOf(sid),an=6.283*idx/Math.max(1,LIVE.rcount);
+  P.x=A/2+Math.cos(an)*620;P.y=A/2+Math.sin(an)*620;for(const o of obs)if(cRect(P.x,P.y,40,o.x,o.y,o.w,o.h)){rnd();break}
   const on=(ref,fn)=>{ref.on('value',fn,fail);LIVE.off.push(()=>ref.off('value',fn))};
-  /* EIN Listener auf alle Spieler (genau wie bei den Cursors) */
   on(base.child('pl'),snap=>{
     const all=snap.val()||{},seen={};
     for(const id in all){
-      if(id===sid)continue;const v=all[id];if(!fresh(v))continue;seen[id]=1;
+      if(id===sid||!LIVE.roster[id])continue;const v=all[id];if(!fresh(v))continue;seen[id]=1;
       let r=R[id];
-      if(!r){r=R[id]={uid:id,x:v.x,y:v.y,tx:v.x,ty:v.y,ta:v.a,angle:v.a,r:22,vx:0,vy:0,lt:performance.now(),lq:v.s?v.s.q:0,ld:v.d?v.d.q:0};if(LIVE.ready)feed((v.n||'Pilot')+' ist beigetreten')}
+      if(!r)r=R[id]={uid:id,x:v.x,y:v.y,tx:v.x,ty:v.y,ta:v.a,angle:v.a,r:22,vx:0,vy:0,lt:performance.now(),lq:v.s?v.s.q:0,ld:v.d?v.d.q:0};
       track(r,v.x,v.y);Object.assign(r,{ta:v.a,hp:v.hp,max:v.m,alive:v.al,modelId:v.mo,col:v.c,name:v.n,k:v.k|0,h:v.h|0});
       if(v.s&&v.s.q!==r.lq){r.lq=v.s.q;shots(r,v.s)}
       if(v.d&&v.d.q!==r.ld){r.ld=v.d.q;feed(`${v.d.bn||'Arena'} elim. ${v.n}`);
@@ -1818,7 +1885,6 @@ function attach(){
   on(base.child('bots'),s=>{let a=s.val()||[];if(!Array.isArray(a))a=Object.values(a);if(LIVE.host)return;const B=LIVE.B;
     a.forEach((v,i)=>{if(!v)return;let r=B[i];if(!r)r=B[i]={uid:'bot'+i,x:v.x,y:v.y,tx:v.x,ty:v.y,angle:v.a,r:v.r||20,vx:0,vy:0,lt:performance.now()};
       track(r,v.x,v.y);Object.assign(r,{ta:v.a,hp:v.hp,max:v.m,alive:v.al,modelId:v.mo,col:v.c,name:v.n,r:v.r||20})});B.length=a.length});
-  /* Eigener Zustand: ganzer Knoten per set(), 25×/s (mit Heartbeat) */
   let lastSig='',lastT=0;
   LIVE.iv=setInterval(()=>{
     if(!LIVE.rid||!P)return;const t=now(),pt=performance.now();
@@ -1827,39 +1893,36 @@ function attach(){
     if(LIVE.lastS&&pt-LIVE.shotT<900)o.s=LIVE.lastS;
     if(LIVE.death&&pt-LIVE.death.at<4000)o.d=LIVE.death.v;
     const sig=[o.x,o.y,o.a,o.hp,o.al,o.k,o.h,o.s&&o.s.q,o.d&&o.d.q].join();
-    if(sig===lastSig&&pt-lastT<350)return;lastSig=sig;lastT=pt;
-    me.set(o).catch(fail);
+    if(sig===lastSig&&pt-lastT<350)return;lastSig=sig;lastT=pt;me.set(o).catch(fail);
   },40);
   LIVE.bv=setInterval(()=>{if(!LIVE.rid||!LIVE.host)return;base.child('bots').set(bots.map(b=>({x:Math.round(b.x),y:Math.round(b.y),a:+b.angle.toFixed(2),hp:Math.round(b.hp),m:b.max,al:b.alive?1:0,mo:b.modelId,c:b.col,n:b.name,r:b.r}))).catch(fail)},60);
-  LIVE.base=base;LIVE.me=me;LIVE.spawn=spawn;lb.style.display='block';ex.style.display='block';feed('LIVE · Arena '+LIVE.rid.slice(1));
+  LIVE.spawn=rnd;lb.style.display='block';ex.style.display='block';feed('MATCH · Raum '+LIVE.rid);
 }
 
 const gat=window.getAllTargets;
-window.getAllTargets=function(e){const l=gat(e);if(LIVE.rid&&LIVE.host)for(const r of Object.values(LIVE.R))if(r.alive&&r!==e)l.push(r);return l};
+window.getAllTargets=function(e){const l=gat(e);if(LIVE.att&&LIVE.host)for(const r of Object.values(LIVE.R))if(r.alive&&r!==e)l.push(r);return l};
 const ou=window.update;let board=0;
 window.update=function(dt){
   ou.apply(this,arguments);
-  if(!LIVE.rid||!LIVE.att||!P)return;
-  time=999;const R=LIVE.R,sid=LIVE.sid,players=Object.values(R);
-  /* Host = kleinste ID: simuliert Bots, füllt auf 10 Slots */
+  if(!LIVE.att||!P)return;
+  const rem0=LIVE.dur-(now()-LIVE.startAt)/1000;time=Math.max(.01,rem0);
+  if(rem0<=0&&!LIVE.exiting){leave();return}
+  const R=LIVE.R,sid=LIVE.sid,players=Object.values(R);
+  /* Host = kleinste ID aus dem festen Roster; Botanzahl bleibt fix */
   if(LIVE.ready){
-    const ids=[sid,...Object.keys(R)].sort(),host=ids[0]===sid,want=Math.max(0,10-ids.length);
+    const ids=[sid,...Object.keys(R)].filter(id=>LIVE.roster[id]).sort(),host=ids[0]===sid,want=Math.max(0,10-LIVE.rcount);
     if(host){
-      if(!LIVE.host){LIVE.host=true;LIVE.B=[];spawnBots()}
-      if(bots.length>want)bots.length=want;
-      else if(bots.length<want){const keep=bots;spawnBots();bots=keep.concat(bots.slice(keep.length,want))}
+      if(!LIVE.host){LIVE.host=true;LIVE.B=[];spawnBots();if(bots.length>want)bots.length=want}
     }else if(LIVE.host){LIVE.host=false;bots=[]}
   }
   const rem=LIVE.host?[]:LIVE.B,list=players.concat(rem);
   for(const r of list){if(r.tx==null)continue;const k=Math.min(1,dt*22),ext=Math.min(.12,(performance.now()-(r.lt||0))/1000),gx=r.tx+(r.vx||0)*ext,gy=r.ty+(r.vy||0)*ext;r.x+=(gx-r.x)*k;r.y+=(gy-r.y)*k;const da=((r.ta-r.angle+Math.PI)%6.283+6.283)%6.283-Math.PI;r.angle+=da*k}
-  /* neue Schüsse (eigene + Bot-Schüsse des Hosts) in die Sende-Queue */
   for(const b of bullets)if(!b._s&&(b.fp||(LIVE.host&&b.owner&&b.owner.type))){b._s=1;LIVE.q.push([Math.round(b.x),Math.round(b.y),Math.round(b.vx),Math.round(b.vy),b.dmg||10,b.r,b.col,+b.life.toFixed(2)])}
-  /* Treffer-Effekt auf Gegner (Schaden berechnet das Opfer bzw. der Host) */
   for(let i=bullets.length-1;i>=0;i--){const b=bullets[i];if(!b.fp)continue;
     for(const r of rem.concat(players)){if(!r.alive||b.hit.has(r.uid)||dist(b,r)>r.r+b.r)continue;b.hit.add(r.uid);burst(b.x,b.y,b.col,8,140);fx.hit(r.x,r.y,b.col);fDmg(r.x,r.y-22,Math.round(b.dmg),'#fff');sfx.hit();P.sup=Math.min(P.cost,P.sup+6);if(!b.pierce){bullets.splice(i,1);break}}}
   if(!P.alive&&!LIVE.dead&&!LIVE.exiting)liveDeath();
   if((board+=dt)>.5){board=0;const a=[{n:P.name,k:P.kills,me:1},...players.map(r=>({n:r.name,k:r.k|0}))].sort((x,y)=>y.k-x.k);
-    lb.innerHTML='<small>LIVE · '+(players.length+1)+' SPIELER · '+(LIVE.host?bots.length:LIVE.B.length)+' BOTS</small>'+a.slice(0,3).map((p,i)=>`${['🥇','🥈','🥉'][i]} <span style="color:${p.me?'#64f5d2':'#fff'}">${String(p.n||'?').replace(/</g,'')}</span> ${p.k}`).join('<br>')}
+    lb.innerHTML='<small>MATCH · '+(players.length+1)+' SPIELER · '+(LIVE.host?bots.length:LIVE.B.length)+' BOTS</small>'+a.slice(0,3).map((p,i)=>`${['🥇','🥈','🥉'][i]} <span style="color:${p.me?'#64f5d2':'#fff'}">${String(p.n||'?').replace(/</g,'')}</span> ${p.k}`).join('<br>')}
 };
 function liveDeath(){
   LIVE.dead=1;LIVE.deaths++;let a=null,bd=1e9;
@@ -1867,7 +1930,7 @@ function liveDeath(){
   const human=a&&LIVE.R[a.uid]===a;LIVE.dq++;
   LIVE.death={at:performance.now(),v:{q:LIVE.dq,by:human?a.uid:'',bn:a?a.name:''}};streak=0;
   msg('ELIMINIERT<br><small style="font-size:14px;opacity:.7">Respawn …</small>',2.2);
-  setTimeout(()=>{if(!LIVE.rid)return;LIVE.spawn();P.hp=P.max;P.alive=1;P.sup=0;P.inv=2.5;LIVE.dead=0},2400);
+  setTimeout(()=>{if(!LIVE.att)return;LIVE.spawn();P.hp=P.max;P.alive=1;P.sup=0;P.inv=2.5;LIVE.dead=0},2400);
 }
 const oe=window.end;
 window.end=function(won){
@@ -1875,19 +1938,23 @@ window.end=function(won){
   return oe.apply(this,arguments);
 };
 function leave(){
+  if(LIVE.exiting)return;
   const pl=Object.values(LIVE.R),n=pl.length+1,solo=n===1,mine=solo?P.kills:LIVE.hk;
   const place=solo?1:1+pl.filter(r=>(r.h|0)>mine).length,won=solo?mine>=2&&mine>=LIVE.deaths:place===1;
   window.__rpInfo={mode:'live',k:mine,d:LIVE.deaths,n,place,secs:(Date.now()-LIVE.t0)/1000};LIVE.exiting=true;
   clearInterval(LIVE.iv);clearInterval(LIVE.bv);LIVE.off.forEach(f=>f());LIVE.off=[];
-  try{LIVE.me.remove();if(LIVE.host&&!pl.length)LIVE.base.child('bots').remove()}catch(e){}
-  LIVE.rid=null;LIVE.att=false;LIVE.R={};LIVE.B=[];LIVE.host=false;lb.style.display='none';ex.style.display='none';
+  const base=LIVE.base,me=LIVE.me,wasHost=LIVE.host;
+  (async()=>{try{await me.remove();if(!Object.values((await base.child('pl').get()).val()||{}).some(fresh))await base.remove()}catch(e){}})();
+  Object.assign(LIVE,{rid:null,base:null,me:null,att:false,starting:false,R:{},B:[],host:false,ready:false,roster:{},meta:null,lp:[]});
+  lb.style.display='none';ex.style.display='none';
   window.__rpDone=false;window.end(won);
+  setTimeout(()=>{LIVE.exiting=false},300);
 }
 ex.addEventListener('click',leave);
 const od=window.draw;
 window.draw=function(){
   od.apply(this,arguments);
-  if(!LIVE.rid||!LIVE.att||!P)return;
+  if(!LIVE.att||!P)return;
   const t=performance.now()/1000;ctx.save();ctx.translate(-cam.x,-cam.y);
   for(const r of Object.values(LIVE.R).concat(LIVE.host?[]:LIVE.B))if(r.alive&&r.modelId)drawC(r.x,r.y,r.r||22,r.angle,r.col,(r.hp||1)/(r.max||1),0,r.modelId,t,r.name||'Pilot');
   ctx.restore();
