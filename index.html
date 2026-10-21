@@ -1757,32 +1757,32 @@ window.rankAnim=function(from,to,detail){$('rkDetail').textContent=detail||'';
   })(performance.now());
 };
 
-/* ---------- LIVE ARENA ---------- */
-const LIVE={rid:null,att:false,R:{},B:[],host:false,ready:false,dead:0,deaths:0,exiting:false,iv:null,bv:null,off:[]};
+/* ---------- LIVE ARENA (wie dein Cursor-Teilen: 1 Knoten pro Spieler, 1 onValue, kein Login nötig) ---------- */
+const LIVE={rid:null,att:false,sid:null,R:{},B:[],host:false,ready:false,dead:0,deaths:0,hk:0,exiting:false,iv:null,bv:null,off:[],q:[],seq:0,dq:0,death:null,lastS:null,shotT:0};
 let sOff=0;if(fdb)fdb.ref('.info/serverTimeOffset').on('value',s=>{sOff=s.val()||0});
 const now=()=>Date.now()+sOff;
+const fresh=v=>v&&typeof v.x==='number'&&now()-(v.t||0)<8000;
 const btn=document.createElement('button');btn.id='liveGo';btn.textContent='🌐 LIVE ARENA';$('go').after(btn);
 const lm=document.createElement('div');lm.id='liveMsg';btn.after(lm);
 const lb=document.createElement('div');lb.id='liveBoard';$('ui').appendChild(lb);
 const ex=document.createElement('button');ex.id='liveExit';ex.textContent='✕ ARENA VERLASSEN';$('hud').appendChild(ex);
 const say=t=>lm.textContent=t;
-const fail=e=>{const m=(e&&(e.code==='PERMISSION_DENIED'||/permission/i.test(e.message||'')))?'⚠ Firebase-Regeln blockieren Live (Rules prüfen)':'⚠ '+((e&&e.message)||e);if(LIVE.rid)feed(m);else say(m)};
+const fail=e=>{const m=(e&&(e.code==='PERMISSION_DENIED'||/permission/i.test(e.message||'')))?'⚠ Rules: Pfad "live" muss lesbar+schreibbar sein':'⚠ '+((e&&e.message)||e);if(LIVE.rid)feed(m);else say(m)};
 
 btn.addEventListener('click',async()=>{
-  if(!fdb||!fauth)return say('Firebase Realtime Database nicht verfügbar.');
+  if(!fdb)return say('Firebase Realtime Database nicht verfügbar.');
   if(LIVE.rid)return;
   try{
     say('Verbinde …');
-    if(!fauth.currentUser)await fauth.signInAnonymously();
+    if(fauth&&!fauth.currentUser){try{await fauth.signInAnonymously()}catch(e){}}
+    const sid=(fauth&&fauth.currentUser&&fauth.currentUser.uid)||('g'+Math.random().toString(36).slice(2,10));
     let rid=null;
-    for(let i=0;i<8&&!rid;i++){const s=await fdb.ref('live/r'+i+'/p').get();if(s.numChildren()<10)rid='r'+i}
+    for(let i=0;i<8&&!rid;i++){const s=await fdb.ref('live/r'+i+'/pl').get();if(Object.values(s.val()||{}).filter(fresh).length<10)rid='r'+i}
     if(!rid)return say('Alle Arenen voll – gleich nochmal versuchen.');
-    const mr=fdb.ref('live/'+rid+'/meta/map');
-    await mr.transaction(c=>c==null?Math.floor(Math.random()*oc.MAPS.length):c);
-    const mi=(await mr.get()).val()|0;
-    Object.assign(LIVE,{rid,att:false,R:{},B:[],host:false,ready:false,deaths:0,dead:0,exiting:false});say('');
+    let mi=0;try{const mr=fdb.ref('live/'+rid+'/meta/map');await mr.transaction(c=>c==null?Math.floor(Math.random()*oc.MAPS.length):c);mi=(await mr.get()).val()|0}catch(e){}
+    Object.assign(LIVE,{rid,sid,att:false,R:{},B:[],host:false,ready:false,deaths:0,dead:0,hk:0,q:[],death:null,lastS:null,exiting:false});say('');
     oc.spin(m=>{oc.setMap(m);window.__mapGo=true;window.start()},mi);
-  }catch(e){LIVE.rid=null;say(e.code==='auth/operation-not-allowed'?'Bitte erst anmelden (Account-Button).':'Fehler: '+(e.message||e))}
+  }catch(e){LIVE.rid=null;fail(e)}
 });
 
 const os=window.start;
@@ -1791,28 +1791,47 @@ window.start=function(){const r=os.apply(this,arguments);if(LIVE.rid&&!LIVE.att&
 function track(r,x,y){const t=performance.now(),dt=(t-(r.lt||t))/1000;
   if(dt>.01&&dt<.5){r.vx=Math.max(-700,Math.min(700,(x-r.tx)/dt));r.vy=Math.max(-700,Math.min(700,(y-r.ty)/dt))}else{r.vx=0;r.vy=0}
   r.lt=t;r.tx=x;r.ty=y}
+function shots(r,s){const lat=Math.max(0,Math.min(.3,(now()-s.t)/1000));
+  for(const b of s.b)bullets.push({x:b[0]+b[2]*lat,y:b[1]+b[3]*lat,vx:b[2],vy:b[3],dmg:b[4],r:b[5],col:b[6],life:b[7]-lat,fp:0,pierce:0,trail:[],hit:new Set(),owner:r,_s:1})}
+
 function attach(){
-  LIVE.att=true;LIVE.t0=Date.now();LIVE.hk=0;bots=[];const uid=fauth.currentUser.uid,base=fdb.ref('live/'+LIVE.rid),R=LIVE.R,t0=now()-4000,seen=new Set();
-  const me=base.child('p/'+uid);me.onDisconnect().remove();
+  LIVE.att=true;LIVE.t0=Date.now();bots=[];
+  const sid=LIVE.sid,base=fdb.ref('live/'+LIVE.rid),R=LIVE.R,me=base.child('pl/'+sid);
+  me.onDisconnect().remove();
   const spawn=()=>{let x,y,ok;do{x=200+Math.random()*(A-400);y=200+Math.random()*(A-400);ok=1;for(const o of obs)if(cRect(x,y,40,o.x,o.y,o.w,o.h))ok=0}while(!ok);P.x=x;P.y=y};spawn();
-  const on=(ref,ev,fn)=>{ref.on(ev,fn,fail);LIVE.off.push(()=>ref.off(ev,fn))};
-  const upd=s=>{if(s.key===uid)return;const v=s.val();if(!v||!v.d)return;const d=v.d;let r=R[s.key];
-    if(!r){r=R[s.key]={uid:s.key,x:d[0],y:d[1],tx:d[0],ty:d[1],ta:d[2],angle:d[2],r:22,vx:0,vy:0,lt:performance.now()};if(LIVE.ready)feed((v.n||'Pilot')+' ist beigetreten')}
-    track(r,d[0],d[1]);Object.assign(r,{ta:d[2],hp:d[3],max:v.m,alive:d[4],modelId:v.mo,col:v.c,name:v.n,k:d[5]|0,h:d[6]|0})};
-  on(base.child('p'),'child_added',upd);on(base.child('p'),'child_changed',upd);
-  on(base.child('p'),'child_removed',s=>{if(R[s.key])feed((R[s.key].name||'Pilot')+' hat verlassen');delete R[s.key]});
-  base.child('p').once('value',()=>{LIVE.ready=true},fail);
-  on(base.child('ev').orderByKey().limitToLast(40),'child_added',s=>{if(seen.has(s.key))return;seen.add(s.key);const v=s.val();if(!v||v.u===uid||v.t<t0)return;
-    const o=R[v.u]||{uid:v.u};const lat=Math.max(0,Math.min(.3,(now()-v.t)/1000));for(const b of v.b)bullets.push({x:b[0]+b[2]*lat,y:b[1]+b[3]*lat,vx:b[2],vy:b[3],dmg:b[4],r:b[5],col:b[6],life:b[7]-lat,fp:0,pierce:0,trail:[],hit:new Set(),owner:o,_s:1})});
-  on(base.child('feed').orderByKey().limitToLast(10),'child_added',s=>{if(seen.has('f'+s.key))return;seen.add('f'+s.key);const v=s.val();if(!v||v.t<t0)return;feed(`${v.kn||'Arena'} elim. ${v.v}`);
-    if(v.k===uid&&P.alive){LIVE.hk++;P.kills++;streak++;streakT=4.5;if(streak>=2)showStreak(streak);sfx.kill();P.hp=Math.min(P.max,P.hp+12);msg('ELIMINATED!',.45)}});
-  on(base.child('bots'),'value',s=>{const a=s.val()||[];if(LIVE.host)return;const B=LIVE.B;
-    a.forEach((v,i)=>{if(!v)return;let r=B[i];if(!r)r=B[i]={uid:'bot'+i,x:v.x,y:v.y,tx:v.x,ty:v.y,angle:v.a,r:v.r||20,vx:0,vy:0,lt:performance.now()};track(r,v.x,v.y);Object.assign(r,{ta:v.a,hp:v.hp,max:v.m,alive:v.al,modelId:v.mo,col:v.c,name:v.n,r:v.r||20})});B.length=a.length});
-  const dyn=()=>[Math.round(P.x),Math.round(P.y),+P.angle.toFixed(2),Math.round(P.hp),P.alive?1:0,P.kills,LIVE.hk|0];
-  me.set({n:P.name,mo:P.modelId,c:P.col,m:P.max,d:dyn()}).catch(fail);let lastD='',lastT=0;
-  LIVE.iv=setInterval(()=>{if(!LIVE.rid||!P)return;const d=dyn(),j=d.join();if(j===lastD&&performance.now()-lastT<400)return;lastD=j;lastT=performance.now();me.child('d').set(d).catch(fail)},50);
+  const on=(ref,fn)=>{ref.on('value',fn,fail);LIVE.off.push(()=>ref.off('value',fn))};
+  /* EIN Listener auf alle Spieler (genau wie bei den Cursors) */
+  on(base.child('pl'),snap=>{
+    const all=snap.val()||{},seen={};
+    for(const id in all){
+      if(id===sid)continue;const v=all[id];if(!fresh(v))continue;seen[id]=1;
+      let r=R[id];
+      if(!r){r=R[id]={uid:id,x:v.x,y:v.y,tx:v.x,ty:v.y,ta:v.a,angle:v.a,r:22,vx:0,vy:0,lt:performance.now(),lq:v.s?v.s.q:0,ld:v.d?v.d.q:0};if(LIVE.ready)feed((v.n||'Pilot')+' ist beigetreten')}
+      track(r,v.x,v.y);Object.assign(r,{ta:v.a,hp:v.hp,max:v.m,alive:v.al,modelId:v.mo,col:v.c,name:v.n,k:v.k|0,h:v.h|0});
+      if(v.s&&v.s.q!==r.lq){r.lq=v.s.q;shots(r,v.s)}
+      if(v.d&&v.d.q!==r.ld){r.ld=v.d.q;feed(`${v.d.bn||'Arena'} elim. ${v.n}`);
+        if(v.d.by===sid&&P.alive){LIVE.hk++;P.kills++;streak++;streakT=4.5;if(streak>=2)showStreak(streak);sfx.kill();P.hp=Math.min(P.max,P.hp+12);msg('ELIMINATED!',.45)}}
+    }
+    for(const id in R)if(!seen[id]){feed((R[id].name||'Pilot')+' hat verlassen');delete R[id]}
+    LIVE.ready=true;
+  });
+  on(base.child('bots'),s=>{let a=s.val()||[];if(!Array.isArray(a))a=Object.values(a);if(LIVE.host)return;const B=LIVE.B;
+    a.forEach((v,i)=>{if(!v)return;let r=B[i];if(!r)r=B[i]={uid:'bot'+i,x:v.x,y:v.y,tx:v.x,ty:v.y,angle:v.a,r:v.r||20,vx:0,vy:0,lt:performance.now()};
+      track(r,v.x,v.y);Object.assign(r,{ta:v.a,hp:v.hp,max:v.m,alive:v.al,modelId:v.mo,col:v.c,name:v.n,r:v.r||20})});B.length=a.length});
+  /* Eigener Zustand: ganzer Knoten per set(), 25×/s (mit Heartbeat) */
+  let lastSig='',lastT=0;
+  LIVE.iv=setInterval(()=>{
+    if(!LIVE.rid||!P)return;const t=now(),pt=performance.now();
+    if(LIVE.q.length){LIVE.seq++;LIVE.lastS={q:LIVE.seq,t,b:LIVE.q.splice(0,40)};LIVE.shotT=pt}
+    const o={x:Math.round(P.x),y:Math.round(P.y),a:+P.angle.toFixed(2),hp:Math.round(P.hp),m:P.max,al:P.alive?1:0,mo:P.modelId,c:P.col,n:P.name,k:P.kills,h:LIVE.hk|0,t};
+    if(LIVE.lastS&&pt-LIVE.shotT<900)o.s=LIVE.lastS;
+    if(LIVE.death&&pt-LIVE.death.at<4000)o.d=LIVE.death.v;
+    const sig=[o.x,o.y,o.a,o.hp,o.al,o.k,o.h,o.s&&o.s.q,o.d&&o.d.q].join();
+    if(sig===lastSig&&pt-lastT<350)return;lastSig=sig;lastT=pt;
+    me.set(o).catch(fail);
+  },40);
   LIVE.bv=setInterval(()=>{if(!LIVE.rid||!LIVE.host)return;base.child('bots').set(bots.map(b=>({x:Math.round(b.x),y:Math.round(b.y),a:+b.angle.toFixed(2),hp:Math.round(b.hp),m:b.max,al:b.alive?1:0,mo:b.modelId,c:b.col,n:b.name,r:b.r}))).catch(fail)},60);
-  LIVE.base=base;LIVE.spawn=spawn;lb.style.display='block';ex.style.display='block';feed('LIVE · Arena '+LIVE.rid.slice(1));
+  LIVE.base=base;LIVE.me=me;LIVE.spawn=spawn;lb.style.display='block';ex.style.display='block';feed('LIVE · Arena '+LIVE.rid.slice(1));
 }
 
 const gat=window.getAllTargets;
@@ -1821,10 +1840,10 @@ const ou=window.update;let board=0;
 window.update=function(dt){
   ou.apply(this,arguments);
   if(!LIVE.rid||!LIVE.att||!P)return;
-  time=999;const R=LIVE.R,uid=fauth.currentUser.uid,players=Object.values(R);
-  /* Host = kleinste UID: simuliert die Bots, füllt auf 10 Slots auf */
+  time=999;const R=LIVE.R,sid=LIVE.sid,players=Object.values(R);
+  /* Host = kleinste ID: simuliert Bots, füllt auf 10 Slots */
   if(LIVE.ready){
-    const ids=[uid,...Object.keys(R)].sort(),host=ids[0]===uid,want=Math.max(0,10-ids.length);
+    const ids=[sid,...Object.keys(R)].sort(),host=ids[0]===sid,want=Math.max(0,10-ids.length);
     if(host){
       if(!LIVE.host){LIVE.host=true;LIVE.B=[];spawnBots()}
       if(bots.length>want)bots.length=want;
@@ -1833,10 +1852,9 @@ window.update=function(dt){
   }
   const rem=LIVE.host?[]:LIVE.B,list=players.concat(rem);
   for(const r of list){if(r.tx==null)continue;const k=Math.min(1,dt*22),ext=Math.min(.12,(performance.now()-(r.lt||0))/1000),gx=r.tx+(r.vx||0)*ext,gy=r.ty+(r.vy||0)*ext;r.x+=(gx-r.x)*k;r.y+=(gy-r.y)*k;const da=((r.ta-r.angle+Math.PI)%6.283+6.283)%6.283-Math.PI;r.angle+=da*k}
-  /* eigene Schüsse + Bot-Schüsse des Hosts gebündelt senden */
-  const nb=[];for(const b of bullets)if(!b._s&&(b.fp||(LIVE.host&&b.owner&&b.owner.type))){b._s=1;nb.push([Math.round(b.x),Math.round(b.y),Math.round(b.vx),Math.round(b.vy),b.dmg||10,b.r,b.col,+b.life.toFixed(2)])}
-  if(nb.length&&LIVE.base){const er=LIVE.base.child('ev').push({u:uid,t:now(),b:nb.slice(0,40)});er.catch(fail);setTimeout(()=>er.remove().catch(()=>{}),5000)}
-    /* Treffer-Effekt auf Gegner (Schaden berechnet das Opfer bzw. der Host) */
+  /* neue Schüsse (eigene + Bot-Schüsse des Hosts) in die Sende-Queue */
+  for(const b of bullets)if(!b._s&&(b.fp||(LIVE.host&&b.owner&&b.owner.type))){b._s=1;LIVE.q.push([Math.round(b.x),Math.round(b.y),Math.round(b.vx),Math.round(b.vy),b.dmg||10,b.r,b.col,+b.life.toFixed(2)])}
+  /* Treffer-Effekt auf Gegner (Schaden berechnet das Opfer bzw. der Host) */
   for(let i=bullets.length-1;i>=0;i--){const b=bullets[i];if(!b.fp)continue;
     for(const r of rem.concat(players)){if(!r.alive||b.hit.has(r.uid)||dist(b,r)>r.r+b.r)continue;b.hit.add(r.uid);burst(b.x,b.y,b.col,8,140);fx.hit(r.x,r.y,b.col);fDmg(r.x,r.y-22,Math.round(b.dmg),'#fff');sfx.hit();P.sup=Math.min(P.cost,P.sup+6);if(!b.pierce){bullets.splice(i,1);break}}}
   if(!P.alive&&!LIVE.dead&&!LIVE.exiting)liveDeath();
@@ -1844,8 +1862,10 @@ window.update=function(dt){
     lb.innerHTML='<small>LIVE · '+(players.length+1)+' SPIELER · '+(LIVE.host?bots.length:LIVE.B.length)+' BOTS</small>'+a.slice(0,3).map((p,i)=>`${['🥇','🥈','🥉'][i]} <span style="color:${p.me?'#64f5d2':'#fff'}">${String(p.n||'?').replace(/</g,'')}</span> ${p.k}`).join('<br>')}
 };
 function liveDeath(){
-  LIVE.dead=1;LIVE.deaths++;let a=null,bd=1e9;for(const r of Object.values(LIVE.R).concat(LIVE.host?bots.filter(b=>b.alive):LIVE.B)){const d=dist(P,r);if(d<bd){bd=d;a=r}}
-  LIVE.base.child('feed').push({k:a&&a.uid&&!String(a.uid).startsWith('bot')&&a.type===undefined?a.uid:'',kn:a?a.name:'',v:P.name,t:now()}).catch(fail);streak=0;
+  LIVE.dead=1;LIVE.deaths++;let a=null,bd=1e9;
+  for(const r of Object.values(LIVE.R).concat(LIVE.host?bots.filter(b=>b.alive):LIVE.B)){const d=dist(P,r);if(d<bd){bd=d;a=r}}
+  const human=a&&LIVE.R[a.uid]===a;LIVE.dq++;
+  LIVE.death={at:performance.now(),v:{q:LIVE.dq,by:human?a.uid:'',bn:a?a.name:''}};streak=0;
   msg('ELIMINIERT<br><small style="font-size:14px;opacity:.7">Respawn …</small>',2.2);
   setTimeout(()=>{if(!LIVE.rid)return;LIVE.spawn();P.hp=P.max;P.alive=1;P.sup=0;P.inv=2.5;LIVE.dead=0},2400);
 }
@@ -1859,7 +1879,7 @@ function leave(){
   const place=solo?1:1+pl.filter(r=>(r.h|0)>mine).length,won=solo?mine>=2&&mine>=LIVE.deaths:place===1;
   window.__rpInfo={mode:'live',k:mine,d:LIVE.deaths,n,place,secs:(Date.now()-LIVE.t0)/1000};LIVE.exiting=true;
   clearInterval(LIVE.iv);clearInterval(LIVE.bv);LIVE.off.forEach(f=>f());LIVE.off=[];
-  try{LIVE.base.child('p/'+fauth.currentUser.uid).remove();if(LIVE.host&&!Object.keys(LIVE.R).length)LIVE.base.child('bots').remove()}catch(e){}
+  try{LIVE.me.remove();if(LIVE.host&&!pl.length)LIVE.base.child('bots').remove()}catch(e){}
   LIVE.rid=null;LIVE.att=false;LIVE.R={};LIVE.B=[];LIVE.host=false;lb.style.display='none';ex.style.display='none';
   window.__rpDone=false;window.end(won);
 }
