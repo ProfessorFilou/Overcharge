@@ -1782,12 +1782,17 @@ const st2=document.createElement('style');st2.textContent=`
 .lbs.bot{opacity:.42}.lbs.me{border-color:#64f5d2;background:rgba(100,245,210,.07)}
 #lbStart{width:100%;height:56px;margin-top:4px;border:0;border-radius:16px;font-size:20px;font-weight:950;letter-spacing:2px;color:#fff;cursor:pointer;background:linear-gradient(180deg,#5cff6a,#00a844);box-shadow:0 5px 0 #007a30;touch-action:manipulation}
 #lbStart:disabled{opacity:.5}#lbWait{font-size:12px;color:#9aa8c5;padding:14px 0}
+.rm{display:flex;align-items:center;gap:8px;padding:9px 10px;margin:6px 0;border:1px solid rgba(255,255,255,.1);border-radius:12px;background:rgba(255,255,255,.035);text-align:left}
+.rm .i{flex:1;min-width:0}.rm b{font-size:14px;letter-spacing:2px}.rm small{display:block;font-size:10px;color:#9aa8c5;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rm .tag{font-size:8px;font-weight:900;padding:2px 6px;border-radius:6px;margin-left:7px;letter-spacing:.8px;vertical-align:2px}.rm .tag.l{background:rgba(100,245,210,.15);color:#64f5d2}.rm .tag.p{background:rgba(255,190,40,.15);color:#ffbe28}
+.rm button{min-width:84px}.rm button:disabled{opacity:.4}
 #cdOv{position:fixed;inset:0;z-index:62;display:none;align-items:center;justify-content:center;font-size:120px;font-weight:950;color:#fff;text-shadow:0 0 50px #64f5d2;pointer-events:none}#cdOv.on{display:flex}`;document.head.appendChild(st2);
 const lobby=document.createElement('div');lobby.id='lobby';
 lobby.innerHTML=`<div class="lbw"><h2>ONLINE LOBBY</h2>
 <div id="lbMenu"><button class="online-action" id="lbQuick" style="width:100%;margin:6px 0;min-height:50px;font-size:13px">⚡ QUICK MATCH</button>
 <button class="online-action" id="lbCreate" style="width:100%;margin:6px 0;min-height:50px;font-size:13px">＋ RAUM ERSTELLEN</button>
-<div style="display:flex;gap:7px;margin-top:6px"><input class="online-input" id="lbCodeIn" style="margin:0;flex:1;min-width:0;text-align:center;letter-spacing:4px;font-weight:900" inputmode="numeric" maxlength="5" placeholder="5-STELLIGER CODE"/><button class="online-action" id="lbJoin" style="min-width:96px">BEITRETEN</button></div></div>
+<div style="display:flex;gap:7px;margin-top:6px"><input class="online-input" id="lbCodeIn" style="margin:0;flex:1;min-width:0;text-align:center;letter-spacing:4px;font-weight:900" inputmode="numeric" maxlength="5" placeholder="5-STELLIGER CODE"/><button class="online-action" id="lbJoin" style="min-width:96px">BEITRETEN</button></div>
+<div class="online-muted" style="margin:18px 0 4px;letter-spacing:2px;font-size:10px">OFFENE RÄUME · LIVE</div><div id="lbList"><div class="online-muted" style="padding:10px">Suche Räume …</div></div></div>
 <div id="lbRoom" class="hidden"><div class="online-muted">RAUMCODE</div><div id="lbCode">-----</div><div id="lbInfo" class="online-muted" style="margin-top:6px"></div>
 <div class="lbgrid" id="lbGrid"></div><button id="lbStart">▶ MATCH STARTEN</button><div id="lbWait" class="hidden">Warte auf den Host …</div>
 <div class="online-actions"><button class="online-action secondary" id="lbCopy">CODE KOPIEREN</button><button class="online-action danger" id="lbLeave">VERLASSEN</button></div></div>
@@ -1801,23 +1806,61 @@ const lmsg=t=>{$('lbMsg').textContent=t||''};
 const fail=e=>{const m=(e&&(e.code==='PERMISSION_DENIED'||/permission/i.test(e.message||'')))?'⚠ Rules: Pfad "rooms2" muss lesbar+schreibbar sein':'⚠ '+((e&&e.message)||e);if(LIVE.att)feed(m);else lmsg(m)};
 const nm2=()=>(($('nick').value||'Spieler').trim().slice(0,12))||'Spieler';
 const lobObj=()=>({x:0,y:0,a:0,hp:100,m:100,al:1,mo:sel.id,c:sel.color,n:nm2(),k:0,h:0,t:now()});
-const showView=room=>{$('lbMenu').classList.toggle('hidden',!!room);$('lbRoom').classList.toggle('hidden',!room)};
-btn.addEventListener('click',()=>{if(!fdb)return alert('Firebase Realtime Database nicht verfügbar.');lmsg('');showView(!!LIVE.rid);lobby.classList.add('on')});
-$('lbClose').addEventListener('click',()=>{if(LIVE.rid&&!LIVE.att)leaveLobby();lobby.classList.remove('on')});
+const showView=room=>{$('lbMenu').classList.toggle('hidden',!!room);$('lbRoom').classList.toggle('hidden',!room);syncList()};
+btn.addEventListener('click',()=>{if(!fdb)return alert('Firebase Realtime Database nicht verfügbar.');lmsg('');lobby.classList.add('on');showView(!!LIVE.rid)});
+$('lbClose').addEventListener('click',()=>{if(LIVE.rid&&!LIVE.att)leaveLobby();lobby.classList.remove('on');syncList()});
+
+/* ---------- Raumliste (aktualisiert sich alle 3,5 s, solange das Lobby-Menü offen ist) ---------- */
+let listIv=null;
+const fmtT=s=>Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0');
+const clean=s=>String(s==null?'':s).replace(/[<>&"']/g,'');
+async function refreshList(){
+  const box=$('lbList');if(!box||!fdb)return;
+  try{
+    const rooms=(await fdb.ref('rooms2').limitToLast(40).get()).val()||{},t=now(),rows=[];
+    for(const code in rooms){const r=rooms[code];if(!r||!r.meta)continue;
+      const pl=Object.values(r.pl||{}).filter(fresh);if(!pl.length)continue;
+      const m=r.meta,playing=m.state==='playing',dur=m.dur||150;
+      const left=playing?Math.max(0,Math.min(dur,dur-(t-(m.startAt||t))/1000)):0;
+      const hp=r.pl&&r.pl[m.host];
+      rows.push({code,n:pl.length,playing,left,map:playing&&oc.MAPS[m.map|0]?oc.MAPS[m.map|0].name:'',host:clean((hp&&hp.n)||pl[0].n||'Pilot')});
+    }
+    rows.sort((a,b)=>b.n-a.n);
+    box.innerHTML=rows.length?rows.map(o=>{
+      const full=o.n>=10,over=o.playing&&o.left<=15;
+      return `<div class="rm"><div class="i"><b>${o.code}</b><span class="tag ${o.playing?'p':'l'}">${o.playing?'LÄUFT':'LOBBY'}</span><small>👑 ${o.host} · ${o.n}/10 Spieler${o.playing?' · 🗺 '+clean(o.map)+' · ⏱ '+fmtT(o.left):''}</small></div><button class="online-action" data-code="${o.code}"${full||over?' disabled':''}>${full?'VOLL':over?'ENDET':'BEITRETEN'}</button></div>`}).join('')
+      :'<div class="online-muted" style="padding:10px">Keine offenen Räume. Erstelle einen oder starte Quick Match.</div>';
+  }catch(e){box.innerHTML='<div class="online-muted" style="padding:10px">Raumliste nicht ladbar ('+clean(e&&(e.code||e.message))+'). Prüfe die Rules für „rooms2“.</div>'}
+}
+function syncList(){
+  const on=lobby.classList.contains('on')&&!LIVE.rid;
+  if(on&&!listIv){refreshList();listIv=setInterval(refreshList,3500)}
+  else if(!on&&listIv){clearInterval(listIv);listIv=null}
+}
+$('lbList').addEventListener('click',e=>{const b=e.target.closest('[data-code]');if(!b||b.disabled)return;lmsg('');
+  ensureSid().then(()=>enter(b.dataset.code,false)).catch(er=>lmsg((er&&er.message)||String(er)))});
 $('lbCodeIn').addEventListener('input',e=>{e.target.value=e.target.value.replace(/\D/g,'').slice(0,5)});
 
-async function ensureSid(){if(fauth&&!fauth.currentUser){try{await fauth.signInAnonymously()}catch(e){}}
-  return LIVE.sid=(fauth&&fauth.currentUser&&fauth.currentUser.uid)||LIVE.sid||('g'+Math.random().toString(36).slice(2,10))}
+async function ensureSid(){
+  if(!fauth)throw new Error('Firebase-Anmeldung nicht verfügbar.');
+  await new Promise(r=>{const u=fauth.onAuthStateChanged(()=>{u();r()})});   /* gespeicherte Anmeldung erst wiederherstellen lassen */
+  if(!fauth.currentUser){try{await fauth.signInAnonymously()}catch(e){
+    const c=e&&e.code;
+    throw new Error(c==='auth/operation-not-allowed'||c==='auth/admin-restricted-operation'?'Anonyme Anmeldung ist in Firebase aus: Authentication → Sign-in method → Anonym aktivieren.'
+      :c==='auth/unauthorized-domain'?'Diese Domain ist in Firebase nicht autorisiert: Authentication → Einstellungen → Autorisierte Domains.'
+      :'Anmeldung fehlgeschlagen: '+(c||(e&&e.message)||e))}}
+  return LIVE.sid=fauth.currentUser.uid}
 const hostId=()=>{const m=LIVE.meta||{};return LIVE.lp.some(p=>p.id===m.host)?m.host:(LIVE.lp[0]&&LIVE.lp[0].id)};
 
 async function enter(code,create){
   const sid=await ensureSid(),base=fdb.ref('rooms2/'+code);
   if(create)await base.child('meta').set({host:sid,state:'lobby',t:now()});
-  else{const m=(await base.child('meta').get()).val();if(!m)throw new Error('Lobby nicht gefunden.');if(m.state!=='lobby')throw new Error('Dort läuft schon ein Match.');
+  else{const m=(await base.child('meta').get()).val();if(!m)throw new Error('Lobby nicht gefunden.');if(m.state==='playing'){if((m.dur||150)-(now()-(m.startAt||0))/1000<12)throw new Error('Das Match ist gleich vorbei.')}else if(m.state!=='lobby')throw new Error('Raum nicht beitretbar.');
     if(Object.values((await base.child('pl').get()).val()||{}).filter(fresh).length>=10)throw new Error('Lobby ist voll.')}
   Object.assign(LIVE,{rid:code,base,me:base.child('pl/'+sid),starting:false,meta:null,lp:[],roster:{}});
   LIVE.me.onDisconnect().remove();await LIVE.me.set(lobObj());
-  LIVE.hb=setInterval(()=>LIVE.me.set(lobObj()).catch(fail),2000);
+  clearInterval(LIVE.hb);   /* nie zwei Lobby-Heartbeats gleichzeitig: ein übrig gebliebener überschrieb im Match die Position (0,0) */
+  LIVE.hb=setInterval(()=>{if(LIVE.att||!LIVE.me)return;LIVE.me.set(lobObj()).catch(fail)},2000);
   const on=(ref,fn)=>{ref.on('value',fn,fail);LIVE.lobOff.push(()=>ref.off('value',fn))};
   on(base.child('pl'),s=>{LIVE.lp=Object.entries(s.val()||{}).filter(([,v])=>fresh(v)).map(([id,v])=>({id,...v})).sort((a,b)=>a.id<b.id?-1:1);renderLobby()});
   on(base.child('meta'),s=>{LIVE.meta=s.val();if(!LIVE.meta){leaveLobby('Lobby wurde geschlossen.');return}renderLobby();if(LIVE.meta.state==='playing')beginMatch()});
@@ -1834,7 +1877,9 @@ function renderLobby(){
 /* Quick Match: immer die Lobby mit den meisten Spielern (noch nicht voll) */
 $('lbQuick').addEventListener('click',async()=>{try{lmsg('Suche die vollste Lobby …');await ensureSid();const rooms=(await fdb.ref('rooms2').limitToLast(60).get()).val()||{};
   const cands=[];
-  for(const code of Object.keys(rooms)){const r=rooms[code];if(!r||!r.meta||r.meta.state!=='lobby')continue;const n=Object.values(r.pl||{}).filter(fresh).length;
+  for(const code of Object.keys(rooms)){const r=rooms[code];if(!r||!r.meta)continue;const m=r.meta;
+    if(m.state==='playing'){if((m.dur||150)-(now()-(m.startAt||0))/1000<20)continue}else if(m.state!=='lobby')continue;
+    const n=Object.values(r.pl||{}).filter(fresh).length;
     if(n>0&&n<10)cands.push({code,n})}
   cands.sort((a,b)=>b.n-a.n);
   for(const c of cands){try{await enter(c.code,false);return}catch(e){}}
@@ -1857,9 +1902,11 @@ $('lbStart').addEventListener('click',async()=>{
 });
 function beginMatch(){
   const m=LIVE.meta;if(LIVE.starting)return;
-  if(!m.roster||!m.roster[LIVE.sid]){leaveLobby('Match läuft bereits.');return}
-  LIVE.starting=true;LIVE.roster=m.roster;LIVE.rcount=Object.keys(m.roster).length;LIVE.startAt=m.startAt;LIVE.dur=m.dur||150;
-  LIVE.lobOff.forEach(f=>f());LIVE.lobOff=[];lobby.classList.remove('on');
+  const late=(!m.roster||!m.roster[LIVE.sid])&&now()>=m.startAt;   /* Beitritt in ein bereits laufendes Match */
+  if(late&&(m.dur||150)-(now()-m.startAt)/1000<8){leaveLobby('Das Match ist gleich vorbei.');return}
+  LIVE.starting=true;LIVE.late=late;LIVE.roster=m.roster||{};LIVE.startAt=m.startAt;LIVE.dur=m.dur||150;
+  LIVE.lobOff.forEach(f=>f());LIVE.lobOff=[];lobby.classList.remove('on');syncList();
+  if(late){oc.setMap(oc.MAPS[m.map|0]);window.__mapGo=true;window.start();return}
   oc.spin(map=>{oc.setMap(map);const iv=setInterval(()=>{const rem=LIVE.startAt-now();
     if(rem<=0){clearInterval(iv);cd.textContent='GO!';setTimeout(()=>cd.classList.remove('on'),500);window.__mapGo=true;window.start()}
     else{cd.classList.add('on');cd.textContent=Math.ceil(rem/1000)}},80)},m.map|0);
@@ -1871,20 +1918,27 @@ window.start=function(){const r=os.apply(this,arguments);if(LIVE.rid&&LIVE.start
 
 /* Snapshot-Puffer: jeder Remote-Spieler/Bot sammelt Positionen mit Sender-Zeitstempel.
    Gerendert wird DELAY ms in der Vergangenheit und zwischen zwei echten Samples interpoliert. */
-function addSample(r,t,x,y,a){
+function addSample(r,t,x,y,a,vx,vy){
   const b=r.buf||(r.buf=[]),l=b[b.length-1];
-  if(l&&t<=l.t)return;
+  if(l&&t<=l.t)return false;
   const o=now()-t;r.mo=r.mo==null?o:Math.min(o,r.mo+.4);   /* kleinste Laufzeit = Uhrenabgleich, driftet langsam nach oben */
   r.dv=Math.max(o-r.mo,(r.dv||0)*.97);                      /* gemessener Jitter: wie viel später als das Minimum Pakete ankommen */
-  const s={t,x,y,a};if(l&&Math.hypot(x-l.x,y-l.y)>380)s.tp=1; /* Teleport (Respawn): nicht überblenden */
+  const s={t,x,y,a,vx:Math.max(-700,Math.min(700,vx||0)),vy:Math.max(-700,Math.min(700,vy||0))};
+  if(l&&Math.hypot(x-l.x,y-l.y)>380)s.tp=1; /* Teleport (Respawn): nicht überblenden */
   b.push(s);if(b.length>40)b.shift();
+  return true;
 }
-function smooth(r){
+function smooth(r,dt){
   const b=r.buf;if(!b||!b.length||r.mo==null)return;
   const tg=Math.min(350,Math.max(DELAY,(r.dv||0)+40));      /* Puffer passt sich dem Netz an (Jitter), weich nachgeführt */
   r.dl=r.dl==null?tg:r.dl+(tg-r.dl)*.05;
   const rt=now()-r.mo-r.dl,n=b.length;let x,y,a,vx=0,vy=0;
-  if(rt>=b[n-1].t){const l=b[n-1];x=l.x;y=l.y;a=l.a}
+  if(rt>=b[n-1].t){
+    /* Keine neuen Daten (Funkloch/Netz-Hänger): mit der letzten gemeldeten Geschwindigkeit weiterlaufen, dabei abbremsen (max. 1 s) */
+    const l=b[n-1],te=Math.min(1,Math.max(0,(rt-l.t)/1000)),k=te*(1-te*.5);
+    x=Math.max(20,Math.min(A-20,l.x+(l.vx||0)*k));y=Math.max(20,Math.min(A-20,l.y+(l.vy||0)*k));a=l.a;vx=(l.vx||0)*(1-te);vy=(l.vy||0)*(1-te);
+    if(rt-l.t>60)r.exT=performance.now();
+  }
   else if(rt<=b[0].t){const f=b[0];x=f.x;y=f.y;a=f.a}
   else{
     let i=n-2;while(i>0&&b[i].t>rt)i--;
@@ -1896,7 +1950,17 @@ function smooth(r){
       vx=Math.max(-700,Math.min(700,(q.x-p.x)/span*1000));vy=Math.max(-700,Math.min(700,(q.y-p.y)/span*1000));
     }
   }
-  r.x=x;r.y=y;r.angle=a;r.vx=vx;r.vy=vy;
+  /* Nach einem Funkloch weich zur echten Position zurückgleiten statt zu springen */
+  if(r.exT&&performance.now()-r.exT<700&&r.x!=null){
+    if(Math.hypot(x-r.x,y-r.y)>240){r.x=x;r.y=y}
+    else{const k=1-Math.exp(-(dt||.016)*9);r.x+=(x-r.x)*k;r.y+=(y-r.y)*k}
+  }else{r.x=x;r.y=y}
+  r.angle=a;r.vx=vx;r.vy=vy;
+}
+function fitBots(want){
+  if(bots.length>want){bots.length=want;return}
+  if(bots.length<want){const keep=bots;spawnBots();const all=bots;bots=keep;
+    for(const b of all)if(bots.length<want&&!bots.some(k=>k.id===b.id))bots.push(b)}
 }
 const batches=s=>Object.values(s||{}).filter(Boolean).sort((a,b)=>a.q-b.q);
 function shots(r,s){const lat=Math.max(0,Math.min(.25,(now()-s.t)/1000));
@@ -1904,22 +1968,22 @@ function shots(r,s){const lat=Math.max(0,Math.min(.25,(now()-s.t)/1000));
 
 function attach(){
   clearInterval(LIVE.hb);LIVE.att=true;LIVE.t0=Date.now();bots=[];
-  Object.assign(LIVE,{deaths:0,hk:0,dead:0,q:[],sb:{},R:{},B:[],host:false,ready:false});
+  Object.assign(LIVE,{deaths:0,hk:0,dead:0,q:[],sb:{},R:{},B:[],host:false,ready:false,gt:now()});
   const sid=LIVE.sid,base=LIVE.base,R=LIVE.R,me=LIVE.me;
   const rnd=()=>{let x,y,ok;do{x=200+Math.random()*(A-400);y=200+Math.random()*(A-400);ok=1;for(const o of obs)if(cRect(x,y,40,o.x,o.y,o.w,o.h))ok=0}while(!ok);P.x=x;P.y=y};
-  const idx=Object.keys(LIVE.roster).sort().indexOf(sid),an=6.283*idx/Math.max(1,LIVE.rcount);
-  P.x=A/2+Math.cos(an)*620;P.y=A/2+Math.sin(an)*620;for(const o of obs)if(cRect(P.x,P.y,40,o.x,o.y,o.w,o.h)){rnd();break}
+  const rk=Object.keys(LIVE.roster).sort(),idx=rk.indexOf(sid),an=6.283*idx/Math.max(1,rk.length);
+  P.x=A/2+Math.cos(an)*620;P.y=A/2+Math.sin(an)*620;
+  if(LIVE.late||idx<0)rnd();else for(const o of obs)if(cRect(P.x,P.y,40,o.x,o.y,o.w,o.h)){rnd();break}
   const onv=(ref,ev,fn)=>{ref.on(ev,fn,fail);LIVE.off.push(()=>ref.off(ev,fn))};
 
   /* Spieler: pro Änderung kommt nur der betroffene Spieler (child_*), nicht der ganze Raum */
   const onPlayer=snap=>{
-    const id=snap.key;if(id===sid||!LIVE.roster[id])return;
-    const v=snap.val();if(!v||!v.g||typeof v.x!=='number')return;   /* g=1: Spieler ist wirklich im Match (keine Lobby-Altdaten) */
+    const id=snap.key;if(id===sid)return;
+    const v=snap.val();if(!v||!v.g||typeof v.x!=='number'||now()-(v.t||0)>6000)return;   /* g=1: Spieler ist wirklich im Match (keine Lobby-Altdaten) */
     const sq=batches(v.s);let r=R[id];
     if(!r)r=R[id]={uid:id,x:v.x,y:v.y,angle:v.a,r:22,vx:0,vy:0,buf:[],mo:null,lq:sq.reduce((m,s)=>Math.max(m,s.q),0),ld:v.d?v.d.q:0};
-    r.rx=performance.now();LIVE.rxN=(LIVE.rxN|0)+1;
-    addSample(r,v.t,v.x,v.y,v.a);
-    Object.assign(r,{hp:v.hp,max:v.m,alive:v.al,modelId:v.mo,col:v.c,name:v.n,k:v.k|0,h:v.h|0});
+    if(addSample(r,v.t,v.x,v.y,v.a,v.vx,v.vy)){r.rx=performance.now();LIVE.rxN=(LIVE.rxN|0)+1}
+    Object.assign(r,{hp:v.hp,max:v.m,alive:v.al,modelId:v.mo,col:v.c,name:v.n,k:v.k|0,h:v.h|0,gt:v.gt||0});
     for(const s of sq)if(s.q>r.lq){r.lq=s.q;shots(r,s)}
     if(v.d&&v.d.q!==r.ld){r.ld=v.d.q;feed(`${v.d.bn||'Arena'} elim. ${v.n}`);
       if(v.d.by===sid&&P.alive){LIVE.hk++;P.kills++;streak++;streakT=4.5;if(streak>=2)showStreak(streak);sfx.kill();P.hp=Math.min(P.max,P.hp+12);msg('ELIMINATED!',.45)}}
@@ -1928,6 +1992,8 @@ function attach(){
   onv(base.child('pl'),'child_changed',onPlayer);
   onv(base.child('pl'),'child_removed',snap=>{const r=R[snap.key];if(r){feed((r.name||'Pilot')+' hat verlassen');delete R[snap.key]}});
   base.child('pl').once('value',()=>{LIVE.ready=true},fail);   /* feuert nach den initialen child_added */
+  /* Sicherheitsnetz: alle 2 s den Raum komplett abgleichen. Fängt verpasste Events ab, z. B. wenn ein Gegner anfangs nicht angezeigt wird */
+  LIVE.rs=setInterval(()=>{if(!LIVE.rid)return;base.child('pl').once('value',s=>{s.forEach(c=>{onPlayer(c)})},fail)},2000);
 
   /* Bots (nur Nicht-Hosts lesen) */
   onv(base.child('bots'),'value',s=>{
@@ -1935,7 +2001,7 @@ function attach(){
     let a=v.l||[];if(!Array.isArray(a))a=Object.values(a);const B=LIVE.B;
     a.forEach((o,i)=>{if(!o)return;let r=B[i];
       if(!r)r=B[i]={uid:'bot'+i,x:o.x,y:o.y,angle:o.a,r:o.r||20,vx:0,vy:0,buf:[],mo:null};
-      addSample(r,v.t,o.x,o.y,o.a);
+      addSample(r,v.t,o.x,o.y,o.a,o.vx,o.vy);
       Object.assign(r,{hp:o.hp,max:o.m,alive:o.al,modelId:o.mo,col:o.c,name:o.n,r:o.r||20})});
     B.length=a.length;
   });
@@ -1951,14 +2017,14 @@ function attach(){
       for(const k in LIVE.sb)if(LIVE.sb[k].t<t-700)delete LIVE.sb[k];
       me.child('s').set(LIVE.sb).catch(fail);
     }
-    const o={g:1,x:Math.round(P.x),y:Math.round(P.y),a:+P.angle.toFixed(2),hp:Math.round(P.hp),m:P.max,al:P.alive?1:0,mo:P.modelId,c:P.col,n:P.name,k:P.kills,h:LIVE.hk|0,t};
-    const sig=[o.x,o.y,o.a,o.hp,o.al,o.k,o.h].join();
+    const o={g:1,gt:LIVE.gt,vx:Math.round(P.vx||0),vy:Math.round(P.vy||0),x:Math.round(P.x),y:Math.round(P.y),a:+P.angle.toFixed(2),hp:Math.round(P.hp),m:P.max,al:P.alive?1:0,mo:P.modelId,c:P.col,n:P.name,k:P.kills,h:LIVE.hk|0,t};
+    const sig=[o.x,o.y,o.a,o.hp,o.al,o.k,o.h,o.vx,o.vy].join();
     if(sig===lastSig&&pt-lastT<350)return;lastSig=sig;lastT=pt;me.update(o).catch(fail);
   };
   LIVE.send=send;send();LIVE.iv=setInterval(send,SEND_MS);   /* zusätzlich aus dem Game-Loop (Timer können auf Handys gedrosselt werden) */
   let lastB=0;
   const sendBots=()=>{if(!LIVE.rid||!LIVE.host)return;const pb=performance.now();if(pb-lastB<BOT_MS*.8)return;lastB=pb;
-    base.child('bots').set({t:now(),l:bots.map(b=>({x:Math.round(b.x),y:Math.round(b.y),a:+b.angle.toFixed(2),hp:Math.round(b.hp),m:b.max,al:b.alive?1:0,mo:b.modelId,c:b.col,n:b.name,r:b.r}))}).catch(fail)};
+    base.child('bots').set({t:now(),l:bots.map(b=>({x:Math.round(b.x),y:Math.round(b.y),a:+b.angle.toFixed(2),vx:Math.round(b.vx||0),vy:Math.round(b.vy||0),hp:Math.round(b.hp),m:b.max,al:b.alive?1:0,mo:b.modelId,c:b.col,n:b.name,r:b.r}))}).catch(fail)};
   LIVE.sendBots=sendBots;LIVE.bv=setInterval(sendBots,BOT_MS);
   LIVE.spawn=rnd;lb.style.display='block';ex.style.display='block';feed('MATCH · Raum '+LIVE.rid);
 }
@@ -1978,13 +2044,16 @@ window.update=function(dt){
   const players=Object.values(R);
   /* Host = kleinste ID aus dem festen Roster; Botanzahl bleibt fix */
   if(LIVE.ready){
-    const ids=[sid,...Object.keys(R)].filter(id=>LIVE.roster[id]).sort(),host=ids[0]===sid,want=Math.max(0,10-LIVE.rcount);
+    /* Host = wer am längsten im Match ist (Beitrittszeit, dann ID). Späte Beitritte übernehmen den Host nie. */
+    const all=[{id:sid,gt:LIVE.gt},...players.map(r=>({id:r.uid,gt:r.gt||0}))].sort((a,b)=>a.gt-b.gt||(a.id<b.id?-1:1));
+    const host=all[0].id===sid,want=Math.max(0,10-all.length);
     if(host){
-      if(!LIVE.host){LIVE.host=true;LIVE.B=[];spawnBots();if(bots.length>want)bots.length=want}
+      if(!LIVE.host){LIVE.host=true;LIVE.B=[];spawnBots()}
+      fitBots(want);   /* Jeder echte Spieler ersetzt einen Bot, geht jemand, kommt ein Bot zurück */
     }else if(LIVE.host){LIVE.host=false;bots=[];LIVE.B=[]}
   }
   const rem=LIVE.host?[]:LIVE.B,list=players.concat(rem);
-  for(const r of list)smooth(r);
+  for(const r of list)smooth(r,dt);
   if(LIVE.send)LIVE.send();if(LIVE.sendBots)LIVE.sendBots();
   for(const b of bullets)if(!b._s&&(b.fp||(LIVE.host&&b.owner&&b.owner.type))){b._s=1;LIVE.q.push([Math.round(b.x),Math.round(b.y),Math.round(b.vx),Math.round(b.vy),b.dmg||10,b.r,b.col,+b.life.toFixed(2)])}
   for(let i=bullets.length-1;i>=0;i--){const b=bullets[i];if(!b.fp)continue;
@@ -2013,7 +2082,7 @@ function leave(){
   const pl=Object.values(LIVE.R),n=pl.length+1,solo=n===1,mine=solo?P.kills:LIVE.hk;
   const place=solo?1:1+pl.filter(r=>(r.h|0)>mine).length,won=solo?mine>=2&&mine>=LIVE.deaths:place===1;
   window.__rpInfo={mode:'live',k:mine,d:LIVE.deaths,n,place,secs:(Date.now()-LIVE.t0)/1000};LIVE.exiting=true;
-  clearInterval(LIVE.iv);clearInterval(LIVE.bv);LIVE.off.forEach(f=>f());LIVE.off=[];
+  clearInterval(LIVE.iv);clearInterval(LIVE.bv);clearInterval(LIVE.rs);LIVE.off.forEach(f=>f());LIVE.off=[];
   const base=LIVE.base,me=LIVE.me;
   (async()=>{try{await me.remove();if(!Object.values((await base.child('pl').get()).val()||{}).some(fresh))await base.remove()}catch(e){}})();
   Object.assign(LIVE,{rid:null,base:null,me:null,att:false,starting:false,R:{},B:[],host:false,ready:false,roster:{},meta:null,lp:[],q:[],sb:{},send:null,sendBots:null});
