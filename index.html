@@ -1592,16 +1592,36 @@ function popRP(d,a,b){
   pop.innerHTML=`<b>${d>=0?'+':''}${d} RP</b><span>${up?'⬆ AUFSTIEG · ':dn?'⬇ ABSTIEG · ':''}${b.ico} ${b.name} · ${b.pts} RP</span>`;
   pop.classList.add('on');setTimeout(()=>pop.classList.remove('on'),3600);
 }
-function applyRP(won){
-  if(!ranked()){setTimeout(()=>msg('UNGERANKT<br><small style="font-size:13px">Melde dich an, um RP zu sammeln</small>',3),1500);return}
-  const old0=RP,k=Math.max(0,P.kills|0),a=rankInfo(RP),t=Math.min(4,Math.floor(RP/300));
-  const d=won?30+Math.min(14,k*2):-(12+t*3)+Math.min(8,k);
-  RP=Math.max(0,RP+d);save();
-  if(ranked()&&fdb)fdb.ref('leaderboard/'+user.uid).transaction(c=>{c=c||{};c.name=nm();c.rp=Math.max(0,(c.rp||0)+d);c.wins=(c.wins||0)+(won?1:0);c.kills=(c.kills||0)+k;c.matches=(c.matches||0)+1;c.robot=window.__ocSelectedRobot||'nyx';c.t=Date.now();return c})
-    .then(r=>{if(r.snapshot.exists()){RP=r.snapshot.val().rp|0;save();renderRank()}}).catch(e=>console.warn('RP speichern:',e));
-  if(window.rankAnim)window.rankAnim(old0,RP);else popRP(d,a,rankInfo(RP));renderRank();
+/* Fair: Platzierung + Kills/Tode, Tier-Steuer, Divisions-Schutz, Mindestspielzeit, Bot-Kills zählen nicht für RP */
+function calcDelta(won,i){
+  const tier=Math.min(4,Math.floor(RP/300));
+  if(i.mode==='live'){
+    if(i.secs<45)return null;
+    const n=i.n,k=i.k,d=i.d,pf=n>1?(n-i.place)/(n-1):Math.max(0,Math.min(1,.5+(k-d)*.06));
+    let x=(pf-.5)*40+Math.min(k,10)*1.2-Math.min(d,10)*.6-tier*2;if(n===1)x*=.6;
+    return Math.round(Math.max(-25,Math.min(40,x)));
+  }
+  const k=Math.max(0,i.k|0);return won?20+Math.min(10,k):-(10+tier*3)+Math.min(8,k);
 }
-
+function applyDelta(rp,d){
+  let n=Math.max(0,rp+d);
+  if(d<0){const st=rp>=2500?2500:rp>=1500?1500:Math.floor(rp/100)*100;if(rp>st)n=Math.max(st,n)}  /* Verlust degradiert erst bei 0 Punkten */
+  return n;
+}
+async function applyRP(won,info){
+  if(!ranked()){setTimeout(()=>msg('UNGERANKT<br><small style="font-size:13px">Melde dich an, um RP zu sammeln</small>',3),1500);return}
+  info=info||{mode:'solo',k:P.kills|0};
+  const d=calcDelta(won,info);
+  if(d===null){setTimeout(()=>msg('ZU KURZ<br><small style="font-size:13px">Mind. 45 s spielen für RP</small>',3),1500);return}
+  const detail=info.mode==='live'?`Platz ${info.place}/${info.n} · ${info.k} Kills · ${info.d} Tode`:`${info.k} Kills · ${won?'Sieg':'Niederlage'}`;
+  let prev=RP,next=applyDelta(RP,d);
+  if(fdb){try{
+    const r=await fdb.ref('leaderboard/'+user.uid).transaction(c=>{c=c||{};prev=c.rp|0;c.name=nm();c.rp=applyDelta(prev,d);c.wins=(c.wins||0)+(d>0?1:0);c.kills=(c.kills||0)+(info.k|0);c.matches=(c.matches||0)+1;c.robot=window.__ocSelectedRobot||'nyx';c.t=Date.now();return c});
+    if(r.snapshot.exists())next=r.snapshot.val().rp|0;
+  }catch(e){console.warn('RP speichern:',e)}}
+  RP=next;renderRank();
+  if(window.rankAnim)window.rankAnim(prev,next,detail);
+}
 /* ===== MAPS ===== */
 const O=a=>a.map(([x,y,w,h])=>({x,y,w,h}));
 const DEF=O([[140,140,130,130],[1480,140,130,130],[140,1480,130,130],[1480,1480,130,130],[740,90,270,42],[740,1618,270,42],[90,740,42,270],[1618,740,42,270],[420,420,110,110],[1220,420,110,110],[420,1220,110,110],[1220,1220,110,110],[770,770,210,210],[240,760,48,230],[1462,760,48,230],[760,240,230,48],[760,1462,230,48],[500,900,80,80],[1170,760,80,80],[900,500,80,80]]);
@@ -1688,7 +1708,7 @@ window.draw=function(){
 window.__oc={MAPS,spin:spinWheel,setMap:m=>{curMap=m},rankInfo};
 const oe=window.end;
 window.end=function(won){
-  if(!window.__rpDone){window.__rpDone=true;try{applyRP(!!won)}catch(e){console.warn(e)}}
+  if(!window.__rpDone){window.__rpDone=true;Promise.resolve(applyRP(!!won,window.__rpInfo)).catch(e=>console.warn(e));window.__rpInfo=null;}
   return oe.apply(this,arguments);
 };
 })();
@@ -1713,14 +1733,14 @@ const st=document.createElement('style');st.textContent=`
 
 /* ---------- Rang-Animation: RP zählt hoch/runter, Balken füllt, Aufstieg = Pop + Konfetti ---------- */
 const ov=document.createElement('div');ov.id='rkAnim';
-ov.innerHTML='<div id="rkBanner"></div><div id="rkBadge">🥉</div><div id="rkName"></div><div id="rkBar"><div id="rkFill"></div></div><div id="rkPts"></div><div id="rkDelta"></div><div style="font-size:10px;color:#6f7d9c">Tippen zum Schließen</div>';
+ov.innerHTML='<div id="rkBanner"></div><div id="rkBadge">🥉</div><div id="rkName"></div><div id="rkBar"><div id="rkFill"></div></div><div id="rkPts"></div><div id="rkDelta"></div><div id="rkDetail" style="font-size:12px;color:#9aa8c5"></div><div style="font-size:10px;color:#6f7d9c">Tippen zum Schließen</div>';
 document.body.appendChild(ov);let rkT=null;
 const rinfo=rp=>window.__oc.rankInfo(rp);
 function confetti(col){for(let i=0;i<34;i++){const c=document.createElement('i');c.className='cf';c.style.cssText+=`left:50%;top:42%;background:${i%3?col:'#fff'}`;ov.appendChild(c);
   const a=Math.random()*6.283,s=120+Math.random()*220;c.animate([{transform:'translate(0,0) rotate(0)',opacity:1},{transform:`translate(${Math.cos(a)*s}px,${Math.sin(a)*s+120}px) rotate(${Math.random()*720}deg)`,opacity:0}],{duration:1100+Math.random()*600,easing:'cubic-bezier(.1,.7,.3,1)'}).onfinish=()=>c.remove()}}
 function closeRk(){clearTimeout(rkT);ov.classList.remove('on')}
 ov.addEventListener('click',closeRk);
-window.rankAnim=function(from,to){
+window.rankAnim=function(from,to,detail){$('rkDetail').textContent=detail||'';
   const d=to-from,badge=$('rkBadge'),ban=$('rkBanner');let last=rinfo(from).lvl;
   const paint=v=>{const r=rinfo(v);ov.style.setProperty('--rc',r.col);badge.textContent=r.ico;$('rkName').textContent=r.name;$('rkFill').style.width=Math.min(100,r.pct)+'%';$('rkPts').textContent=r.pts+' RP';return r};
   paint(from);ban.textContent='';ban.style.color='';$('rkDelta').textContent='';
@@ -1769,23 +1789,23 @@ const os=window.start;
 window.start=function(){const r=os.apply(this,arguments);if(LIVE.rid&&!LIVE.att&&run)attach();return r};
 
 function attach(){
-  LIVE.att=true;bots=[];const uid=fauth.currentUser.uid,base=fdb.ref('live/'+LIVE.rid),R=LIVE.R,t0=now()-4000,seen=new Set();
+  LIVE.att=true;LIVE.t0=Date.now();LIVE.hk=0;bots=[];const uid=fauth.currentUser.uid,base=fdb.ref('live/'+LIVE.rid),R=LIVE.R,t0=now()-4000,seen=new Set();
   const me=base.child('p/'+uid);me.onDisconnect().remove();
   const spawn=()=>{let x,y,ok;do{x=200+Math.random()*(A-400);y=200+Math.random()*(A-400);ok=1;for(const o of obs)if(cRect(x,y,40,o.x,o.y,o.w,o.h))ok=0}while(!ok);P.x=x;P.y=y};spawn();
   const on=(ref,ev,fn)=>{ref.on(ev,fn,fail);LIVE.off.push(()=>ref.off(ev,fn))};
   const upd=s=>{if(s.key===uid)return;const v=s.val();if(!v)return;let r=R[s.key];
     if(!r){r=R[s.key]={uid:s.key,x:v.x,y:v.y,tx:v.x,ty:v.y,ta:v.a,angle:v.a,r:22};if(LIVE.ready)feed((v.n||'Pilot')+' ist beigetreten')}
-    Object.assign(r,{tx:v.x,ty:v.y,ta:v.a,hp:v.hp,max:v.m,alive:v.al,modelId:v.mo,col:v.c,name:v.n,k:v.k|0})};
+    Object.assign(r,{tx:v.x,ty:v.y,ta:v.a,hp:v.hp,max:v.m,alive:v.al,modelId:v.mo,col:v.c,name:v.n,k:v.k|0,h:v.h|0})};
   on(base.child('p'),'child_added',upd);on(base.child('p'),'child_changed',upd);
   on(base.child('p'),'child_removed',s=>{if(R[s.key])feed((R[s.key].name||'Pilot')+' hat verlassen');delete R[s.key]});
   base.child('p').once('value',()=>{LIVE.ready=true},fail);
   on(base.child('ev').orderByKey().limitToLast(40),'child_added',s=>{if(seen.has(s.key))return;seen.add(s.key);const v=s.val();if(!v||v.u===uid||v.t<t0)return;
     const o=R[v.u]||{uid:v.u};for(const b of v.b)bullets.push({x:b[0],y:b[1],vx:b[2],vy:b[3],dmg:b[4],r:b[5],col:b[6],life:b[7],fp:0,pierce:0,trail:[],hit:new Set(),owner:o,_s:1})});
   on(base.child('feed').orderByKey().limitToLast(10),'child_added',s=>{if(seen.has('f'+s.key))return;seen.add('f'+s.key);const v=s.val();if(!v||v.t<t0)return;feed(`${v.kn||'Arena'} elim. ${v.v}`);
-    if(v.k===uid&&P.alive){P.kills++;streak++;streakT=4.5;if(streak>=2)showStreak(streak);sfx.kill();P.hp=Math.min(P.max,P.hp+12);msg('ELIMINATED!',.45)}});
+    if(v.k===uid&&P.alive){LIVE.hk++;P.kills++;streak++;streakT=4.5;if(streak>=2)showStreak(streak);sfx.kill();P.hp=Math.min(P.max,P.hp+12);msg('ELIMINATED!',.45)}});
   on(base.child('bots'),'value',s=>{const a=s.val()||[];if(LIVE.host)return;const B=LIVE.B;
     a.forEach((v,i)=>{if(!v)return;let r=B[i];if(!r)r=B[i]={uid:'bot'+i,x:v.x,y:v.y,angle:v.a,r:v.r||20};Object.assign(r,{tx:v.x,ty:v.y,ta:v.a,hp:v.hp,max:v.m,alive:v.al,modelId:v.mo,col:v.c,name:v.n,r:v.r||20})});B.length=a.length});
-  LIVE.iv=setInterval(()=>{if(!LIVE.rid||!P)return;me.set({x:Math.round(P.x),y:Math.round(P.y),a:+P.angle.toFixed(2),hp:Math.round(P.hp),m:P.max,al:P.alive?1:0,mo:P.modelId,c:P.col,n:P.name,k:P.kills}).catch(fail)},66);
+  LIVE.iv=setInterval(()=>{if(!LIVE.rid||!P)return;me.set({x:Math.round(P.x),y:Math.round(P.y),a:+P.angle.toFixed(2),hp:Math.round(P.hp),m:P.max,al:P.alive?1:0,mo:P.modelId,c:P.col,n:P.name,k:P.kills,h:LIVE.hk|0}).catch(fail)},66);
   LIVE.bv=setInterval(()=>{if(!LIVE.rid||!LIVE.host)return;base.child('bots').set(bots.map(b=>({x:Math.round(b.x),y:Math.round(b.y),a:+b.angle.toFixed(2),hp:Math.round(b.hp),m:b.max,al:b.alive?1:0,mo:b.modelId,c:b.col,n:b.name,r:b.r}))).catch(fail)},100);
   LIVE.base=base;LIVE.spawn=spawn;lb.style.display='block';ex.style.display='block';feed('LIVE · Arena '+LIVE.rid.slice(1));
 }
@@ -1831,7 +1851,9 @@ window.end=function(won){
   return oe.apply(this,arguments);
 };
 function leave(){
-  const k=P?P.kills:0,won=k>=2&&k>=LIVE.deaths;LIVE.exiting=true;
+  const pl=Object.values(LIVE.R),n=pl.length+1,solo=n===1,mine=solo?P.kills:LIVE.hk;
+  const place=solo?1:1+pl.filter(r=>(r.h|0)>mine).length,won=solo?mine>=2&&mine>=LIVE.deaths:place===1;
+  window.__rpInfo={mode:'live',k:mine,d:LIVE.deaths,n,place,secs:(Date.now()-LIVE.t0)/1000};LIVE.exiting=true;
   clearInterval(LIVE.iv);clearInterval(LIVE.bv);LIVE.off.forEach(f=>f());LIVE.off=[];
   try{LIVE.base.child('p/'+fauth.currentUser.uid).remove();if(LIVE.host&&!Object.keys(LIVE.R).length)LIVE.base.child('bots').remove()}catch(e){}
   LIVE.rid=null;LIVE.att=false;LIVE.R={};LIVE.B=[];LIVE.host=false;lb.style.display='none';ex.style.display='none';
