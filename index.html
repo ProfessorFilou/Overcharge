@@ -1715,10 +1715,19 @@ window.end=function(won){
 </script>
 <script>
 (()=>{'use strict';
-/* ===== OVERCHARGE LIVE (.io) via Realtime Database + Rang-Animation ===== */
+/* ===== OVERCHARGE LIVE v3 – flüssiger Multiplayer =====
+   - Snapshot-Interpolation mit Puffer (statt Lerp + Extrapolation)
+   - Delta-Sync: Bewegung, Schüsse und Tod in getrennten Knoten
+   - Child-Listener statt "value" auf dem ganzen Raum
+   - Kein Hitstop im Live-Match (der fror die ganze Welt kurz ein)
+   - Match-Statistik wird pro Match zurückgesetzt
+*/
 const $=id=>document.getElementById(id);
 const oc=window.__oc;let fdb=null,fauth=null;
 try{fdb=firebase.database();fauth=firebase.auth();}catch(e){}
+const DELAY=110;     /* ms Render-Verzögerung der anderen Spieler. Bei starkem Ruckeln auf 150 erhöhen, bei zu viel Lag auf 80 senken */
+const SEND_MS=40;    /* Sende-Takt Spieler */
+const BOT_MS=50;     /* Sende-Takt Bots (nur Host) */
 const st=document.createElement('style');st.textContent=`
 #liveGo{width:100%;height:50px;margin-top:10px;border:0;border-radius:16px;cursor:pointer;font-size:17px;font-weight:900;letter-spacing:2px;color:#fff;background:linear-gradient(180deg,#5aa7ff,#2f6bff);box-shadow:0 5px 0 #1b3fb0,0 8px 18px rgba(0,0,0,.35);touch-action:manipulation}
 #liveGo:active{transform:translateY(3px);box-shadow:0 2px 0 #1b3fb0}#liveMsg{font-size:11px;color:#9aa8c5;text-align:center;margin-top:8px;min-height:14px}
@@ -1731,7 +1740,7 @@ const st=document.createElement('style');st.textContent=`
 #rkFill{height:100%;width:0;background:var(--rc);box-shadow:0 0 14px var(--rc)}#rkPts{font-size:15px;font-weight:800;color:#c9d4ee}#rkDelta{font-size:44px;font-weight:950}#rkBanner{font-size:20px;font-weight:950;letter-spacing:4px;min-height:26px}
 .cf{position:absolute;width:9px;height:9px;border-radius:2px;pointer-events:none}`;document.head.appendChild(st);
 
-/* ---------- Rang-Animation: RP zählt hoch/runter, Balken füllt, Aufstieg = Pop + Konfetti ---------- */
+/* ---------- Rang-Animation ---------- */
 const ov=document.createElement('div');ov.id='rkAnim';
 ov.innerHTML='<div id="rkBanner"></div><div id="rkBadge">🥉</div><div id="rkName"></div><div id="rkBar"><div id="rkFill"></div></div><div id="rkPts"></div><div id="rkDelta"></div><div id="rkDetail" style="font-size:12px;color:#9aa8c5"></div><div style="font-size:10px;color:#6f7d9c">Tippen zum Schließen</div>';
 document.body.appendChild(ov);let rkT=null;
@@ -1758,7 +1767,7 @@ window.rankAnim=function(from,to,detail){$('rkDetail').textContent=detail||'';
 };
 
 /* ---------- ONLINE LOBBY + SYNCHRONER MATCH-START ---------- */
-const LIVE={rid:null,sid:null,base:null,me:null,att:false,R:{},B:[],host:false,ready:false,dead:0,deaths:0,hk:0,exiting:false,iv:null,bv:null,hb:null,lobOff:[],off:[],q:[],seq:0,dq:0,death:null,lastS:null,shotT:0,roster:{},rcount:1,startAt:0,dur:150,starting:false,meta:null,lp:[]};
+const LIVE={rid:null,sid:null,base:null,me:null,att:false,R:{},B:[],host:false,ready:false,dead:0,deaths:0,hk:0,exiting:false,iv:null,bv:null,hb:null,lobOff:[],off:[],q:[],seq:0,dq:0,sb:{},roster:{},rcount:1,startAt:0,dur:150,starting:false,meta:null,lp:[]};
 let sOff=0;if(fdb)fdb.ref('.info/serverTimeOffset').on('value',s=>{sOff=s.val()||0});
 const now=()=>Date.now()+sOff;
 const fresh=v=>v&&typeof v.x==='number'&&now()-(v.t||0)<8000;
@@ -1822,9 +1831,13 @@ function renderLobby(){
    +Array.from({length:10-n},(_,i)=>`<div class="lbs bot"><span>Bot ${i+1}<small>KI</small></span></div>`).join('');
   $('lbStart').classList.toggle('hidden',!isH);$('lbWait').classList.toggle('hidden',isH);
 }
-$('lbQuick').addEventListener('click',async()=>{try{lmsg('Suche Lobby …');const sid=await ensureSid(),rooms=(await fdb.ref('rooms2').limitToLast(25).get()).val()||{};
-  for(const code of Object.keys(rooms)){const r=rooms[code];if(!r.meta||r.meta.state!=='lobby')continue;const n=Object.values(r.pl||{}).filter(fresh).length;
-    if(n>0&&n<10){try{await enter(code,false);return}catch(e){}}}
+/* Quick Match: immer die Lobby mit den meisten Spielern (noch nicht voll) */
+$('lbQuick').addEventListener('click',async()=>{try{lmsg('Suche die vollste Lobby …');await ensureSid();const rooms=(await fdb.ref('rooms2').limitToLast(60).get()).val()||{};
+  const cands=[];
+  for(const code of Object.keys(rooms)){const r=rooms[code];if(!r||!r.meta||r.meta.state!=='lobby')continue;const n=Object.values(r.pl||{}).filter(fresh).length;
+    if(n>0&&n<10)cands.push({code,n})}
+  cands.sort((a,b)=>b.n-a.n);
+  for(const c of cands){try{await enter(c.code,false);return}catch(e){}}
   await createNew()}catch(e){fail(e)}});
 async function createNew(){for(let i=0;i<6;i++){const c=String(Math.floor(10000+Math.random()*90000));if(!(await fdb.ref('rooms2/'+c+'/meta').get()).exists()){await enter(c,true);return}}throw new Error('Kein freier Code.')}
 $('lbCreate').addEventListener('click',()=>createNew().catch(fail));
@@ -1855,80 +1868,138 @@ function beginMatch(){
 /* ---------- Match ---------- */
 const os=window.start;
 window.start=function(){const r=os.apply(this,arguments);if(LIVE.rid&&LIVE.starting&&!LIVE.att&&run)attach();return r};
-function track(r,x,y){const t=performance.now(),dt=(t-(r.lt||t))/1000;
-  if(dt>.01&&dt<.5){r.vx=Math.max(-700,Math.min(700,(x-r.tx)/dt));r.vy=Math.max(-700,Math.min(700,(y-r.ty)/dt))}else{r.vx=0;r.vy=0}
-  r.lt=t;r.tx=x;r.ty=y}
-function shots(r,s){const lat=Math.max(0,Math.min(.3,(now()-s.t)/1000));
-  for(const b of s.b)bullets.push({x:b[0]+b[2]*lat,y:b[1]+b[3]*lat,vx:b[2],vy:b[3],dmg:b[4],r:b[5],col:b[6],life:b[7]-lat,fp:0,pierce:0,trail:[],hit:new Set(),owner:r,_s:1})}
+
+/* Snapshot-Puffer: jeder Remote-Spieler/Bot sammelt Positionen mit Sender-Zeitstempel.
+   Gerendert wird DELAY ms in der Vergangenheit und zwischen zwei echten Samples interpoliert. */
+function addSample(r,t,x,y,a){
+  const b=r.buf||(r.buf=[]),l=b[b.length-1];
+  if(l&&t<=l.t)return;
+  const o=now()-t;r.mo=r.mo==null?o:Math.min(o,r.mo+.4);   /* kleinste Laufzeit = Uhrenabgleich, driftet langsam nach oben */
+  r.dv=Math.max(o-r.mo,(r.dv||0)*.97);                      /* gemessener Jitter: wie viel später als das Minimum Pakete ankommen */
+  const s={t,x,y,a};if(l&&Math.hypot(x-l.x,y-l.y)>380)s.tp=1; /* Teleport (Respawn): nicht überblenden */
+  b.push(s);if(b.length>40)b.shift();
+}
+function smooth(r){
+  const b=r.buf;if(!b||!b.length||r.mo==null)return;
+  const tg=Math.min(350,Math.max(DELAY,(r.dv||0)+40));      /* Puffer passt sich dem Netz an (Jitter), weich nachgeführt */
+  r.dl=r.dl==null?tg:r.dl+(tg-r.dl)*.05;
+  const rt=now()-r.mo-r.dl,n=b.length;let x,y,a,vx=0,vy=0;
+  if(rt>=b[n-1].t){const l=b[n-1];x=l.x;y=l.y;a=l.a}
+  else if(rt<=b[0].t){const f=b[0];x=f.x;y=f.y;a=f.a}
+  else{
+    let i=n-2;while(i>0&&b[i].t>rt)i--;
+    const p=b[i],q=b[i+1],span=q.t-p.t||1;
+    if(q.tp){x=p.x;y=p.y;a=p.a}
+    else{
+      const u=(rt-p.t)/span;x=p.x+(q.x-p.x)*u;y=p.y+(q.y-p.y)*u;
+      let da=q.a-p.a;da=((da+Math.PI)%6.2832+6.2832)%6.2832-Math.PI;a=p.a+da*u;
+      vx=Math.max(-700,Math.min(700,(q.x-p.x)/span*1000));vy=Math.max(-700,Math.min(700,(q.y-p.y)/span*1000));
+    }
+  }
+  r.x=x;r.y=y;r.angle=a;r.vx=vx;r.vy=vy;
+}
+const batches=s=>Object.values(s||{}).filter(Boolean).sort((a,b)=>a.q-b.q);
+function shots(r,s){const lat=Math.max(0,Math.min(.25,(now()-s.t)/1000));
+  for(const b of (s.b||[]))bullets.push({x:b[0]+b[2]*lat,y:b[1]+b[3]*lat,vx:b[2],vy:b[3],dmg:b[4],r:b[5],col:b[6],life:b[7]-lat,fp:0,pierce:0,trail:[],hit:new Set(),owner:r,_s:1})}
 
 function attach(){
   clearInterval(LIVE.hb);LIVE.att=true;LIVE.t0=Date.now();bots=[];
+  Object.assign(LIVE,{deaths:0,hk:0,dead:0,q:[],sb:{},R:{},B:[],host:false,ready:false});
   const sid=LIVE.sid,base=LIVE.base,R=LIVE.R,me=LIVE.me;
   const rnd=()=>{let x,y,ok;do{x=200+Math.random()*(A-400);y=200+Math.random()*(A-400);ok=1;for(const o of obs)if(cRect(x,y,40,o.x,o.y,o.w,o.h))ok=0}while(!ok);P.x=x;P.y=y};
   const idx=Object.keys(LIVE.roster).sort().indexOf(sid),an=6.283*idx/Math.max(1,LIVE.rcount);
   P.x=A/2+Math.cos(an)*620;P.y=A/2+Math.sin(an)*620;for(const o of obs)if(cRect(P.x,P.y,40,o.x,o.y,o.w,o.h)){rnd();break}
-  const on=(ref,fn)=>{ref.on('value',fn,fail);LIVE.off.push(()=>ref.off('value',fn))};
-  on(base.child('pl'),snap=>{
-    const all=snap.val()||{},seen={};
-    for(const id in all){
-      if(id===sid||!LIVE.roster[id])continue;const v=all[id];if(!fresh(v))continue;seen[id]=1;
-      let r=R[id];
-      if(!r)r=R[id]={uid:id,x:v.x,y:v.y,tx:v.x,ty:v.y,ta:v.a,angle:v.a,r:22,vx:0,vy:0,lt:performance.now(),lq:v.s?v.s.q:0,ld:v.d?v.d.q:0};
-      track(r,v.x,v.y);Object.assign(r,{ta:v.a,hp:v.hp,max:v.m,alive:v.al,modelId:v.mo,col:v.c,name:v.n,k:v.k|0,h:v.h|0});
-      if(v.s&&v.s.q!==r.lq){r.lq=v.s.q;shots(r,v.s)}
-      if(v.d&&v.d.q!==r.ld){r.ld=v.d.q;feed(`${v.d.bn||'Arena'} elim. ${v.n}`);
-        if(v.d.by===sid&&P.alive){LIVE.hk++;P.kills++;streak++;streakT=4.5;if(streak>=2)showStreak(streak);sfx.kill();P.hp=Math.min(P.max,P.hp+12);msg('ELIMINATED!',.45)}}
-    }
-    for(const id in R)if(!seen[id]){feed((R[id].name||'Pilot')+' hat verlassen');delete R[id]}
-    LIVE.ready=true;
+  const onv=(ref,ev,fn)=>{ref.on(ev,fn,fail);LIVE.off.push(()=>ref.off(ev,fn))};
+
+  /* Spieler: pro Änderung kommt nur der betroffene Spieler (child_*), nicht der ganze Raum */
+  const onPlayer=snap=>{
+    const id=snap.key;if(id===sid||!LIVE.roster[id])return;
+    const v=snap.val();if(!v||!v.g||typeof v.x!=='number')return;   /* g=1: Spieler ist wirklich im Match (keine Lobby-Altdaten) */
+    const sq=batches(v.s);let r=R[id];
+    if(!r)r=R[id]={uid:id,x:v.x,y:v.y,angle:v.a,r:22,vx:0,vy:0,buf:[],mo:null,lq:sq.reduce((m,s)=>Math.max(m,s.q),0),ld:v.d?v.d.q:0};
+    r.rx=performance.now();LIVE.rxN=(LIVE.rxN|0)+1;
+    addSample(r,v.t,v.x,v.y,v.a);
+    Object.assign(r,{hp:v.hp,max:v.m,alive:v.al,modelId:v.mo,col:v.c,name:v.n,k:v.k|0,h:v.h|0});
+    for(const s of sq)if(s.q>r.lq){r.lq=s.q;shots(r,s)}
+    if(v.d&&v.d.q!==r.ld){r.ld=v.d.q;feed(`${v.d.bn||'Arena'} elim. ${v.n}`);
+      if(v.d.by===sid&&P.alive){LIVE.hk++;P.kills++;streak++;streakT=4.5;if(streak>=2)showStreak(streak);sfx.kill();P.hp=Math.min(P.max,P.hp+12);msg('ELIMINATED!',.45)}}
+  };
+  onv(base.child('pl'),'child_added',onPlayer);
+  onv(base.child('pl'),'child_changed',onPlayer);
+  onv(base.child('pl'),'child_removed',snap=>{const r=R[snap.key];if(r){feed((r.name||'Pilot')+' hat verlassen');delete R[snap.key]}});
+  base.child('pl').once('value',()=>{LIVE.ready=true},fail);   /* feuert nach den initialen child_added */
+
+  /* Bots (nur Nicht-Hosts lesen) */
+  onv(base.child('bots'),'value',s=>{
+    const v=s.val();if(!v||LIVE.host)return;LIVE.rxN=(LIVE.rxN|0)+1;
+    let a=v.l||[];if(!Array.isArray(a))a=Object.values(a);const B=LIVE.B;
+    a.forEach((o,i)=>{if(!o)return;let r=B[i];
+      if(!r)r=B[i]={uid:'bot'+i,x:o.x,y:o.y,angle:o.a,r:o.r||20,vx:0,vy:0,buf:[],mo:null};
+      addSample(r,v.t,o.x,o.y,o.a);
+      Object.assign(r,{hp:o.hp,max:o.m,alive:o.al,modelId:o.mo,col:o.c,name:o.n,r:o.r||20})});
+    B.length=a.length;
   });
-  on(base.child('bots'),s=>{let a=s.val()||[];if(!Array.isArray(a))a=Object.values(a);if(LIVE.host)return;const B=LIVE.B;
-    a.forEach((v,i)=>{if(!v)return;let r=B[i];if(!r)r=B[i]={uid:'bot'+i,x:v.x,y:v.y,tx:v.x,ty:v.y,angle:v.a,r:v.r||20,vx:0,vy:0,lt:performance.now()};
-      track(r,v.x,v.y);Object.assign(r,{ta:v.a,hp:v.hp,max:v.m,alive:v.al,modelId:v.mo,col:v.c,name:v.n,r:v.r||20})});B.length=a.length});
-  let lastSig='',lastT=0;
-  LIVE.iv=setInterval(()=>{
-    if(!LIVE.rid||!P)return;const t=now(),pt=performance.now();
-    if(LIVE.q.length){LIVE.seq++;LIVE.lastS={q:LIVE.seq,t,b:LIVE.q.splice(0,40)};LIVE.shotT=pt}
-    const o={x:Math.round(P.x),y:Math.round(P.y),a:+P.angle.toFixed(2),hp:Math.round(P.hp),m:P.max,al:P.alive?1:0,mo:P.modelId,c:P.col,n:P.name,k:P.kills,h:LIVE.hk|0,t};
-    if(LIVE.lastS&&pt-LIVE.shotT<900)o.s=LIVE.lastS;
-    if(LIVE.death&&pt-LIVE.death.at<4000)o.d=LIVE.death.v;
-    const sig=[o.x,o.y,o.a,o.hp,o.al,o.k,o.h,o.s&&o.s.q,o.d&&o.d.q].join();
-    if(sig===lastSig&&pt-lastT<350)return;lastSig=sig;lastT=pt;me.set(o).catch(fail);
-  },40);
-  LIVE.bv=setInterval(()=>{if(!LIVE.rid||!LIVE.host)return;base.child('bots').set(bots.map(b=>({x:Math.round(b.x),y:Math.round(b.y),a:+b.angle.toFixed(2),hp:Math.round(b.hp),m:b.max,al:b.alive?1:0,mo:b.modelId,c:b.col,n:b.name,r:b.r}))).catch(fail)},60);
+
+  /* Senden: Bewegung per update() (nur geänderte Felder), Schüsse + Tod in eigenen Knoten */
+  onv(fdb.ref('.info/connected'),'value',s=>{LIVE.conn=s.val()!==false});
+  let lastSig='',lastT=0,lastRun=0;
+  const send=()=>{
+    if(!LIVE.rid||!P||!me)return;const t=now(),pt=performance.now();
+    if(pt-lastRun<SEND_MS*.8)return;lastRun=pt;
+    if(LIVE.q.length){
+      LIVE.seq++;LIVE.sb['b'+LIVE.seq]={q:LIVE.seq,t,b:LIVE.q.splice(0,60)};
+      for(const k in LIVE.sb)if(LIVE.sb[k].t<t-700)delete LIVE.sb[k];
+      me.child('s').set(LIVE.sb).catch(fail);
+    }
+    const o={g:1,x:Math.round(P.x),y:Math.round(P.y),a:+P.angle.toFixed(2),hp:Math.round(P.hp),m:P.max,al:P.alive?1:0,mo:P.modelId,c:P.col,n:P.name,k:P.kills,h:LIVE.hk|0,t};
+    const sig=[o.x,o.y,o.a,o.hp,o.al,o.k,o.h].join();
+    if(sig===lastSig&&pt-lastT<350)return;lastSig=sig;lastT=pt;me.update(o).catch(fail);
+  };
+  LIVE.send=send;send();LIVE.iv=setInterval(send,SEND_MS);   /* zusätzlich aus dem Game-Loop (Timer können auf Handys gedrosselt werden) */
+  let lastB=0;
+  const sendBots=()=>{if(!LIVE.rid||!LIVE.host)return;const pb=performance.now();if(pb-lastB<BOT_MS*.8)return;lastB=pb;
+    base.child('bots').set({t:now(),l:bots.map(b=>({x:Math.round(b.x),y:Math.round(b.y),a:+b.angle.toFixed(2),hp:Math.round(b.hp),m:b.max,al:b.alive?1:0,mo:b.modelId,c:b.col,n:b.name,r:b.r}))}).catch(fail)};
+  LIVE.sendBots=sendBots;LIVE.bv=setInterval(sendBots,BOT_MS);
   LIVE.spawn=rnd;lb.style.display='block';ex.style.display='block';feed('MATCH · Raum '+LIVE.rid);
 }
 
 const gat=window.getAllTargets;
 window.getAllTargets=function(e){const l=gat(e);if(LIVE.att&&LIVE.host)for(const r of Object.values(LIVE.R))if(r.alive&&r!==e)l.push(r);return l};
-const ou=window.update;let board=0;
+const ou=window.update;let board=0,sweep=0;
 window.update=function(dt){
+  if(LIVE.att)hitstop=0;   /* Hitstop würde im Live-Match die ganze Welt ruckeln lassen */
   ou.apply(this,arguments);
   if(!LIVE.att||!P)return;
   const rem0=LIVE.dur-(now()-LIVE.startAt)/1000;time=Math.max(.01,rem0);
   if(rem0<=0&&!LIVE.exiting){leave();return}
-  const R=LIVE.R,sid=LIVE.sid,players=Object.values(R);
+  const R=LIVE.R,sid=LIVE.sid;
+  /* Verbindungsabbrüche ohne onDisconnect: nach 8 s ohne Lebenszeichen entfernen */
+  if((sweep+=dt)>1){sweep=0;const pn=performance.now();for(const id in R)if(pn-(R[id].rx||0)>8000){feed((R[id].name||'Pilot')+' hat verlassen');delete R[id]}}
+  const players=Object.values(R);
   /* Host = kleinste ID aus dem festen Roster; Botanzahl bleibt fix */
   if(LIVE.ready){
     const ids=[sid,...Object.keys(R)].filter(id=>LIVE.roster[id]).sort(),host=ids[0]===sid,want=Math.max(0,10-LIVE.rcount);
     if(host){
       if(!LIVE.host){LIVE.host=true;LIVE.B=[];spawnBots();if(bots.length>want)bots.length=want}
-    }else if(LIVE.host){LIVE.host=false;bots=[]}
+    }else if(LIVE.host){LIVE.host=false;bots=[];LIVE.B=[]}
   }
   const rem=LIVE.host?[]:LIVE.B,list=players.concat(rem);
-  for(const r of list){if(r.tx==null)continue;const k=Math.min(1,dt*22),ext=Math.min(.12,(performance.now()-(r.lt||0))/1000),gx=r.tx+(r.vx||0)*ext,gy=r.ty+(r.vy||0)*ext;r.x+=(gx-r.x)*k;r.y+=(gy-r.y)*k;const da=((r.ta-r.angle+Math.PI)%6.283+6.283)%6.283-Math.PI;r.angle+=da*k}
+  for(const r of list)smooth(r);
+  if(LIVE.send)LIVE.send();if(LIVE.sendBots)LIVE.sendBots();
   for(const b of bullets)if(!b._s&&(b.fp||(LIVE.host&&b.owner&&b.owner.type))){b._s=1;LIVE.q.push([Math.round(b.x),Math.round(b.y),Math.round(b.vx),Math.round(b.vy),b.dmg||10,b.r,b.col,+b.life.toFixed(2)])}
   for(let i=bullets.length-1;i>=0;i--){const b=bullets[i];if(!b.fp)continue;
     for(const r of rem.concat(players)){if(!r.alive||b.hit.has(r.uid)||dist(b,r)>r.r+b.r)continue;b.hit.add(r.uid);burst(b.x,b.y,b.col,8,140);fx.hit(r.x,r.y,b.col);fDmg(r.x,r.y-22,Math.round(b.dmg),'#fff');sfx.hit();P.sup=Math.min(P.cost,P.sup+6);if(!b.pierce){bullets.splice(i,1);break}}}
   if(!P.alive&&!LIVE.dead&&!LIVE.exiting)liveDeath();
-  if((board+=dt)>.5){board=0;const a=[{n:P.name,k:P.kills,me:1},...players.map(r=>({n:r.name,k:r.k|0}))].sort((x,y)=>y.k-x.k);
-    lb.innerHTML='<small>MATCH · '+(players.length+1)+' SPIELER · '+(LIVE.host?bots.length:LIVE.B.length)+' BOTS</small>'+a.slice(0,3).map((p,i)=>`${['🥇','🥈','🥉'][i]} <span style="color:${p.me?'#64f5d2':'#fff'}">${String(p.n||'?').replace(/</g,'')}</span> ${p.k}`).join('<br>')}
+  if((board+=dt)>.5){board=0;const rate=Math.round((LIVE.rxN|0)*2);LIVE.rxN=0;
+    const net=LIVE.conn===false?'⚠ OFFLINE':(rate<8&&(players.length||!LIVE.host))?'⚠ Netz langsam · '+rate+'/s':'📶 '+rate+'/s';const a=[{n:P.name,k:P.kills,me:1},...players.map(r=>({n:r.name,k:r.k|0}))].sort((x,y)=>y.k-x.k);
+    lb.innerHTML='<small>MATCH · '+(players.length+1)+' SPIELER · '+(LIVE.host?bots.length:LIVE.B.length)+' BOTS<br>'+net+'</small>'+a.slice(0,3).map((p,i)=>`${['🥇','🥈','🥉'][i]} <span style="color:${p.me?'#64f5d2':'#fff'}">${String(p.n||'?').replace(/</g,'')}</span> ${p.k}`).join('<br>')}
 };
 function liveDeath(){
   LIVE.dead=1;LIVE.deaths++;let a=null,bd=1e9;
   for(const r of Object.values(LIVE.R).concat(LIVE.host?bots.filter(b=>b.alive):LIVE.B)){const d=dist(P,r);if(d<bd){bd=d;a=r}}
   const human=a&&LIVE.R[a.uid]===a;LIVE.dq++;
-  LIVE.death={at:performance.now(),v:{q:LIVE.dq,by:human?a.uid:'',bn:a?a.name:''}};streak=0;
+  if(LIVE.me)LIVE.me.child('d').set({q:LIVE.dq,by:human?a.uid:'',bn:a?a.name:''}).catch(fail);
+  streak=0;
   msg('ELIMINIERT<br><small style="font-size:14px;opacity:.7">Respawn …</small>',2.2);
   setTimeout(()=>{if(!LIVE.att)return;LIVE.spawn();P.hp=P.max;P.alive=1;P.sup=0;P.inv=2.5;LIVE.dead=0},2400);
 }
@@ -1943,9 +2014,9 @@ function leave(){
   const place=solo?1:1+pl.filter(r=>(r.h|0)>mine).length,won=solo?mine>=2&&mine>=LIVE.deaths:place===1;
   window.__rpInfo={mode:'live',k:mine,d:LIVE.deaths,n,place,secs:(Date.now()-LIVE.t0)/1000};LIVE.exiting=true;
   clearInterval(LIVE.iv);clearInterval(LIVE.bv);LIVE.off.forEach(f=>f());LIVE.off=[];
-  const base=LIVE.base,me=LIVE.me,wasHost=LIVE.host;
+  const base=LIVE.base,me=LIVE.me;
   (async()=>{try{await me.remove();if(!Object.values((await base.child('pl').get()).val()||{}).some(fresh))await base.remove()}catch(e){}})();
-  Object.assign(LIVE,{rid:null,base:null,me:null,att:false,starting:false,R:{},B:[],host:false,ready:false,roster:{},meta:null,lp:[]});
+  Object.assign(LIVE,{rid:null,base:null,me:null,att:false,starting:false,R:{},B:[],host:false,ready:false,roster:{},meta:null,lp:[],q:[],sb:{},send:null,sendBots:null});
   lb.style.display='none';ex.style.display='none';
   window.__rpDone=false;window.end(won);
   setTimeout(()=>{LIVE.exiting=false},300);
