@@ -308,12 +308,47 @@ html,body{height:100%;min-height:0;overflow:hidden}
 @keyframes rnShimmer{0%{background-position:0% 50%}100%{background-position:200% 50%}}
 @keyframes rnPulse{0%,100%{filter:drop-shadow(0 0 8px rgba(100,245,210,.4))}50%{filter:drop-shadow(0 0 16px rgba(100,245,210,.75))}}
 
-.rank-row.rank-line{display:grid;grid-template-columns:40px minmax(0,1.2fr) minmax(0,1.4fr) auto;gap:8px;align-items:center;padding:10px 12px}
-.rank-stats{display:flex;flex-wrap:wrap;gap:6px 10px;font-size:10px;font-weight:800;color:#9aa8c5}
-.rank-stats span{white-space:nowrap}
-@media(max-width:420px){
-  .rank-row.rank-line{grid-template-columns:36px minmax(0,1fr) auto;gap:6px}
-  .rank-stats{grid-column:1/-1;padding-left:36px}
+/* Rangliste: eine Zeile, klare Spalten + Kopfzeile */
+.rank-table{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;margin-top:6px}
+.rank-table-inner{min-width:320px;width:100%}
+.rank-head,.rank-row.rank-line{
+  display:grid;
+  grid-template-columns:36px minmax(72px,1.4fr) 44px 44px 48px 52px 56px;
+  gap:4px 6px;
+  align-items:center;
+  padding:8px 10px;
+  box-sizing:border-box;
+}
+.rank-head{
+  margin-bottom:4px;padding-top:6px;padding-bottom:6px;
+  border-radius:10px;
+  background:rgba(255,255,255,.04);
+  border:1px solid rgba(148,171,220,.12);
+  font-size:9px;font-weight:800;letter-spacing:.4px;
+  color:#8c9ab8;text-transform:uppercase;
+}
+.rank-head span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rank-row.rank-line{
+  border-radius:11px;
+  background:rgba(255,255,255,.035);
+  border:1px solid rgba(255,255,255,.065);
+  margin-bottom:5px;
+  font-size:11px;font-weight:800;
+}
+.rank-row.rank-line .rank-number{text-align:center;font-size:13px}
+.rank-row.rank-line .rank-player{min-width:0;overflow:hidden}
+.rank-row.rank-line .rank-player .rn{display:inline-block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom}
+.rank-row.rank-line .rank-sub{display:block;font-size:8px;font-weight:700;margin-top:2px;letter-spacing:.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rank-cell{text-align:center;font-variant-numeric:tabular-nums;color:#d7e0f4;white-space:nowrap}
+.rank-cell.rp{color:#ffd866;font-weight:900;text-align:right}
+.rank-legend{font-size:10px;line-height:1.45;color:#7f8dab;margin:8px 2px 0;padding:0}
+@media(max-width:400px){
+  .rank-head,.rank-row.rank-line{
+    grid-template-columns:30px minmax(56px,1.2fr) 36px 36px 40px 44px 48px;
+    gap:2px 4px;padding:7px 6px;font-size:10px;
+  }
+  .rank-head{font-size:8px;letter-spacing:.2px}
+  .rank-row.rank-line .rank-sub{font-size:7px}
 }
 /* ===== ROBOT STATS PANEL ===== */
 #botStats{
@@ -2027,31 +2062,38 @@ bu.insertAdjacentHTML('beforeend','<div id="buc">0%</div>');const buc=$('buc');
 function podHTML(l){return '<div class="pod">'+[1,0,2].map(i=>{const p=l[i],r=rankInfo(p?p.rp:0);
   return `<div class="pc p${i+1}"><div class="pm">${['🥇','🥈','🥉'][i]}</div><div class="pn">${p?rankNameHTML(p.name,p.rp):'—'}</div><div class="pr" style="color:${r.col}">${p?r.ico+' '+r.name:'frei'}</div><div class="pb"><span>${p?p.rp:0}</span></div></div>`}).join('')+'</div>'}
 function renderBoard(){
-  /* Podium optional leer lassen – alles in Zeilen Top 10 */
   document.querySelectorAll('.podium-host').forEach(e=>{e.innerHTML='';e.style.display='none'});
   const top = board.slice(0,10);
-  const rowsHtml = top.length ? top.map((p,i)=>{
+  const head = `<div class="rank-table"><div class="rank-table-inner">
+    <div class="rank-head" title="Platz · Name · Abschüsse · Tode · Kills pro Tod · Siege · Rangpunkte">
+      <span>#</span>
+      <span>Name</span>
+      <span title="Abschüsse (Kills)">Kills</span>
+      <span title="Wie oft gestorben">Tode</span>
+      <span title="Kills geteilt durch Tode">K/D</span>
+      <span title="Gewonnene Matches">Siege</span>
+      <span title="Rangpunkte">RP</span>
+    </div>`;
+  const rows = top.length ? top.map((p,i)=>{
     const r=rankInfo(p.rp|0), me=user&&p.uid===user.uid;
-    const med = i===0?'🥇':i===1?'🥈':i===2?'🥉':('#'+(i+1));
+    const med = i===0?'🥇':i===1?'🥈':i===2?'🥉':String(i+1);
     const kills=p.kills|0, deaths=p.deaths|0;
-    const kd = deaths>0 ? (kills/deaths).toFixed(2) : (kills>0?kills.toFixed(1):'0');
-    const wr = (p.matches|0)>0 ? Math.round(((p.wins|0)/(p.matches|0))*100) : 0;
+    const kd = deaths>0 ? (kills/deaths).toFixed(1) : (kills>0 ? String(kills) : '–');
     return `<div class="rank-row rank-line" style="${me?'border-color:#00ffd0;background:rgba(0,255,210,.06)':''}">
       <span class="rank-number">${med}</span>
-      <span class="rank-player">${rankNameHTML(p.name,p.rp)}
-        <small class="rank-sub" style="color:${r.col}">${r.ico} ${r.name}</small>
-      </span>
-      <span class="rank-stats">
-        <span title="Kills">⚔ ${kills}</span>
-        <span title="Tode">💀 ${deaths}</span>
-        <span title="K/D">K/D ${kd}</span>
-        <span title="Siege">${p.wins|0}W · ${wr}%</span>
-      </span>
-      <span class="rank-score">${p.rp|0} RP</span>
+      <span class="rank-player">${rankNameHTML(p.name,p.rp)}<small class="rank-sub" style="color:${r.col}">${r.ico} ${r.name}</small></span>
+      <span class="rank-cell" title="Abschüsse">${kills}</span>
+      <span class="rank-cell" title="Tode">${deaths}</span>
+      <span class="rank-cell" title="Kills pro Tod">${kd}</span>
+      <span class="rank-cell" title="Siege">${p.wins|0}</span>
+      <span class="rank-cell rp" title="Rangpunkte">${p.rp|0}</span>
     </div>`;
-  }).join('') : '<div class="online-muted">Noch keine Piloten. Melde dich an und sei der Erste!</div>';
-  if($('rtRows'))$('rtRows').innerHTML=rowsHtml;
-  if($('rankRailRows'))$('rankRailRows').innerHTML=rowsHtml;
+  }).join('') : '<div class="online-muted" style="padding:12px">Noch keine Piloten. Melde dich an und sei der Erste!</div>';
+  const foot = `</div></div>
+    <p class="rank-legend"><strong>Kills</strong> = Abschüsse · <strong>Tode</strong> = wie oft gestorben · <strong>K/D</strong> = Kills÷Tode · <strong>Siege</strong> = gewonnene Matches · <strong>RP</strong> = Rangpunkte</p>`;
+  const htmlOut = top.length ? (head + rows + foot) : rows;
+  if($('rtRows'))$('rtRows').innerHTML=htmlOut;
+  if($('rankRailRows'))$('rankRailRows').innerHTML=htmlOut;
 }
 function renderRank(){
   const rk=ranked(),r=rk?rankInfo(RP):{col:'#6f7d9c',ico:'🔒',name:'UNGERANKT',pts:0,pct:0,sub:'Melde dich an, um zu ranken'};card.style.setProperty('--rc',r.col);
@@ -3938,7 +3980,7 @@ try{applyGameplaySettings()}catch(e){}
 /* ===== Rank rail (rechts) + Settings-Hooks ===== */
 (function(){
   const rail=document.createElement('div');rail.id='rankRail';
-  rail.innerHTML=`<div class="rh"><h3><svg viewBox="0 0 24 24"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M7 6H4v2a4 4 0 0 0 4 4M17 6h3v2a4 4 0 0 1-4 4"/></svg>RANGLISTE</h3><button type="button" id="rankClose" aria-label="Schließen"><svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg></button></div><div class="rb"><div class="rmeta" id="rankRailMeta">Top Piloten nach RP</div><div class="podium-host" id="rankRailPod"></div><div id="rankRailRows"></div></div>`;
+  rail.innerHTML=`<div class="rh"><h3><svg viewBox="0 0 24 24"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M7 6H4v2a4 4 0 0 0 4 4M17 6h3v2a4 4 0 0 1-4 4"/></svg>RANGLISTE</h3><button type="button" id="rankClose" aria-label="Schließen"><svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg></button></div><div class="rb"><div class="rmeta" id="rankRailMeta">Top 10 · Kills · Tode · K/D · Siege · RP</div><div class="podium-host" id="rankRailPod"></div><div id="rankRailRows"></div></div>`;
   document.body.appendChild(rail);
   const scrim=document.createElement('div');scrim.id='rankScrim';document.body.appendChild(scrim);
   function openRank(){scrim.classList.add('on');rail.classList.add('on');try{if(typeof renderBoard==='function')renderBoard()}catch(e){}
@@ -4011,4 +4053,4 @@ try{applyGameplaySettings()}catch(e){}
 
 </script>
 </body>
-</html>s
+</html>
