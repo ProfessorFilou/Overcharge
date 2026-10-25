@@ -2555,11 +2555,11 @@ const st=document.createElement('style');st.textContent=`
 #netPing .ico{font-size:12px}
 #hpVig{position:absolute;inset:0;pointer-events:none;z-index:14;opacity:0;transition:opacity .35s;background:radial-gradient(ellipse at center,transparent 42%,rgba(180,0,30,.28) 100%)}
 #hpVig.on{opacity:1}
-#chatBtn{position:absolute;bottom:max(168px,calc(env(safe-area-inset-bottom)+152px));right:22px;width:46px;height:46px;border-radius:14px;z-index:23;display:none;align-items:center;justify-content:center;border:1.5px solid rgba(0,255,210,.4);background:rgba(8,12,28,.9);color:#64f5d2;pointer-events:auto;touch-action:manipulation;box-shadow:0 4px 16px rgba(0,0,0,.4);padding:0}
+#chatBtn{display:none!important;position:absolute;bottom:max(168px,calc(env(safe-area-inset-bottom)+152px));right:22px;width:46px;height:46px;border-radius:14px;z-index:23;display:none;align-items:center;justify-content:center;border:1.5px solid rgba(0,255,210,.4);background:rgba(8,12,28,.9);color:#64f5d2;pointer-events:auto;touch-action:manipulation;box-shadow:0 4px 16px rgba(0,0,0,.4);padding:0}
 #chatBtn svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 #chatBtn.on{display:flex}
 #chatBtn.cd{opacity:.35;filter:grayscale(.4)}
-#emoteMenu{bottom:max(222px,calc(env(safe-area-inset-bottom)+206px))!important;right:16px!important}
+#emoteMenu{display:none!important;bottom:max(222px,calc(env(safe-area-inset-bottom)+206px))!important;right:16px!important}
 
 #emoteMenu{position:absolute;bottom:max(72px,calc(env(safe-area-inset-bottom) + 56px));right:12px;z-index:24;display:none;flex-wrap:wrap;gap:6px;width:168px;padding:8px;border-radius:16px;background:rgba(6,8,20,.94);border:1px solid rgba(0,255,210,.25);pointer-events:auto}
 #emoteMenu.on{display:flex}
@@ -2936,6 +2936,7 @@ const hostId=()=>{const m=LIVE.meta||{};return LIVE.lp.some(p=>p.id===m.host)?m.
 async function enter(code,create,asSpec){
   const sid=await ensureSid(),base=fdb.ref('rooms2/'+code);
   LIVE.spectator=!!asSpec;
+  if(create) LIVE.spectator=false;
   if(create){LIVE.spectator=false;await base.child('meta').set({host:sid,state:'lobby',t:now(),winMode:LIVE.winMode||'time',dur:LIVE.dur||150,killLimit:LIVE.killLimit||10,botFill:LIVE.botFill|0,diff:LIVE.diff||'mid'});}
   else{
     const m=(await base.child('meta').get()).val();
@@ -3254,6 +3255,24 @@ function attach() {
     deaths: 0, hk: 0, dead: 0, q: [], sb: {}, R: {}, B: [],
     host: false, ready: false, gt: now(), hostSettle: 0, botHits: {}, phHits: {}
   });
+  /* Meta während Match (Ende-Signal) */
+  try {
+    const mref = base.child('meta');
+    const mfn = s => {
+      const v = s.val();
+      if (!v) return;
+      LIVE.meta = v;
+      if (v.winMode) LIVE.winMode = v.winMode;
+      if (v.killLimit) LIVE.killLimit = v.killLimit | 0;
+      if (v.state === 'ended' && !LIVE.exiting) {
+        LIVE.exiting = true;
+        feed('🏁 Match beendet' + (v.winner ? (' · ' + v.winner) : ''));
+        setTimeout(() => { try { leave(); } catch (e) {} }, 500);
+      }
+    };
+    mref.on('value', mfn, fail);
+    LIVE.off.push(() => mref.off('value', mfn));
+  } catch (e) {}
   if (LIVE.spectator) {
     LIVE.dead = 1;
     if (P) { P.alive = 0; P.hp = 0; }
@@ -3265,6 +3284,9 @@ function attach() {
         feed('👁 Zuschauer-Modus · Match verlassen über EXIT');
       } catch (e) {}
     }, 800);
+  } else {
+    /* aktiver Spieler: nie im Zuschauer-Lock */
+    LIVE.spectator = false;
   }
   const sid = LIVE.sid, base = LIVE.base, R = LIVE.R, me = LIVE.me;
 
@@ -3314,7 +3336,7 @@ function attach() {
     }
     Object.assign(r, {
       hp: v.hp, max: v.m, alive: v.al, modelId: v.mo, col: v.c || playerColor(id),
-      name: v.n, k: v.k | 0, h: v.h | 0, gt: v.gt || 0
+      name: v.n, k: v.k | 0, h: v.h | 0, deaths: v.dth | 0, dth: v.dth | 0, gt: v.gt || 0
     });
     if (v.em && v.em.t && v.em.t !== r._emT && now() - v.em.t < 2500) {
       r._emT = v.em.t;
@@ -3565,7 +3587,7 @@ function attach() {
       a: +P.angle.toFixed(2),
       hp: Math.round(P.hp), m: P.max, al: P.alive ? 1 : 0,
       mo: P.modelId, c: P.col, n: P.name,
-      k: P.kills, h: LIVE.hk | 0, t
+      k: P.kills, h: LIVE.hk | 0, dth: LIVE.deaths | 0, t
     };
     const sig = [o.x, o.y, o.a, o.hp, o.al, o.k, o.h, o.vx, o.vy].join();
     /* Force heartbeat every 180ms even if still – prevents "frozen" remote */
@@ -3604,7 +3626,7 @@ function attach() {
   lb.style.display = 'block';
   ex.style.display = 'block';
   if (typeof S === 'undefined' || (window.__ocSettings && window.__ocSettings.showPing !== false) || (typeof S !== 'undefined' && S.showPing !== false)) netPing.classList.add('show');
-  chatBtn.classList.add('on');
+  /* chat disabled */
   
   if (specCount) { specCount.classList.add('on'); }
 
@@ -3960,24 +3982,36 @@ window.update = function (dt) {
     }
   }
 
-  if (LIVE.spectator) {
+  if (LIVE.spectator === true) {
     if (P) { P.alive = 0; P.hp = 0; P.vx = 0; P.vy = 0; }
   } else if (!P.alive && !LIVE.dead && !LIVE.exiting) liveDeath();
-  /* Siegbedingung: Erster mit >= killLimit Kills gewinnt (sofort Ende) */
-  if (LIVE.att && !LIVE.exiting && (LIVE.winMode === 'kills' || (LIVE.meta && LIVE.meta.winMode === 'kills'))) {
+  /* Match-Ende vom Host (Kill-Ziel) für alle Clients */
+  if (LIVE.att && !LIVE.exiting && LIVE.meta && LIVE.meta.state === 'ended') {
+    LIVE.exiting = true;
+    feed('🏁 Match beendet');
+    setTimeout(() => { try { leave(); } catch (e) {} }, 400);
+  }
+  /* Sieg: (Kills - Tode) >= Limit  → z.B. +5: bei 2 Toden braucht man 7 Kills */
+  if (LIVE.att && !LIVE.exiting && !LIVE.spectator && (LIVE.winMode === 'kills' || (LIVE.meta && LIVE.meta.winMode === 'kills'))) {
     const lim = Math.max(1, (LIVE.killLimit || (LIVE.meta && LIVE.meta.killLimit) || 10) | 0);
-    let top = (P && (P.kills|0)) || 0;
+    const scoreOf = (kills, deaths) => (kills|0) - (deaths|0);
+    let best = scoreOf(P && P.kills, LIVE.deaths);
     let leader = (P && P.name) || 'Du';
     for (const r of Object.values(LIVE.R || {})) {
-      const k = (r.k|0) || (r.kills|0);
-      if (k > top) { top = k; leader = r.name || 'Pilot'; }
+      const sc = scoreOf((r.k|0) || (r.kills|0), (r.deaths|0) || (r.dth|0));
+      if (sc > best) { best = sc; leader = r.name || 'Pilot'; }
     }
-    if (top >= lim) {
+    if (best >= lim) {
       LIVE.exiting = true;
-      LIVE.winMode = 'kills';
-      feed('🏁 ' + leader + ' erreicht +' + lim + ' Kills – Match Ende');
-      msg('SIEG · +' + lim + ' KILLS<br><small style="font-size:13px">' + leader + '</small>', 2.2);
-      setTimeout(() => { try { leave(); } catch (e) {} }, 900);
+      feed('🏁 ' + leader + ' schafft +' + lim + ' (Kills−Tode) – Match Ende');
+      msg('MATCH ENDE<br><small style="font-size:13px">' + leader + ' · +' + lim + '</small>', 2.2);
+      /* Host signalisiert allen das Ende */
+      try {
+        if (LIVE.host && LIVE.base) {
+          LIVE.base.child('meta').update({ state: 'ended', endAt: now(), winner: leader }).catch(() => {});
+        }
+      } catch (e) {}
+      setTimeout(() => { try { leave(); } catch (e) {} }, 1000);
     }
   }
 
@@ -4046,33 +4080,43 @@ function liveDeath() {
     if (!LIVE.att || LIVE.exiting) return;
     killcamTag.classList.remove('on');
     LIVE.killcam = 0;
-    /* Reine Zuschauer bleiben tot und schauen weiter */
     if (LIVE.spectator) {
       LIVE.dead = 1;
       if (P) { P.alive = 0; P.hp = 0; }
       if (specBar) specBar.classList.add('on');
       return;
     }
-    /* Respawn – besonders wichtig bei Kill-Ziel (+5/+10/+20) */
+    /* Immer Respawn solange Match läuft */
+    LIVE.spectator = false;
     try {
       if (typeof LIVE.spawn === 'function') LIVE.spawn();
       else {
-        P.x = 200 + Math.random() * (A - 400);
-        P.y = 200 + Math.random() * (A - 400);
+        let x, y, tries = 0;
+        do {
+          x = 180 + Math.random() * (A - 360);
+          y = 180 + Math.random() * (A - 360);
+          tries++;
+        } while (tries < 12 && obs.some(o => cRect(x, y, 40, o.x, o.y, o.w, o.h)));
+        P.x = x; P.y = y;
       }
     } catch (e) {
       P.x = A / 2; P.y = A / 2;
     }
     P.hp = P.max;
+    P.max = P.max || 100;
     P.alive = 1;
-    P.sup = Math.min(P.cost, P.sup || 0);
-    P.inv = 2.5;
+    P.sup = 0;
+    P.inv = 2.8;
     P.vx = 0; P.vy = 0;
+    P.fCd = 0;
     LIVE.dead = 0;
     LIVE.spec = null;
     if (specBar) specBar.classList.remove('on');
-    feed('Respawn');
-  }, 2800);
+    if (killcamTag) killcamTag.classList.remove('on');
+    feed('▶ RESPAWN');
+    /* Status sofort an andere senden */
+    try { if (LIVE.send) LIVE.send(); } catch (e) {}
+  }, 2200);
 }
 function buildSpecBar() {
   const arrows = $('specArrows');
@@ -4180,7 +4224,7 @@ function leave() {
   lb.style.display = 'none';
   ex.style.display = 'none';
   netPing.classList.remove('show');
-  chatBtn.classList.remove('on');
+  /* chat disabled */
   emoteMenu.classList.remove('on');
   adminBtn.classList.remove('on');
   adminPanel.classList.remove('on');
