@@ -281,6 +281,27 @@ html,body{height:100%;min-height:0;overflow:hidden}
 
 
 
+
+#botStats .bs-super{margin-top:10px;padding-top:10px;border-top:1px solid rgba(148,171,220,.14)}
+#botStats .bs-super-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px}
+#botStats .bs-super-tag{font-size:9px;font-weight:900;letter-spacing:1.4px;color:#c084fc;text-transform:uppercase}
+#botStats .bs-super-lv{font-size:10px;font-weight:900;padding:2px 8px;border-radius:8px;background:rgba(192,132,252,.15);border:1px solid rgba(192,132,252,.35);color:#e9d5ff}
+#botStats .bs-super-name{font-size:13px;font-weight:900;color:#fff;letter-spacing:.3px}
+#botStats .bs-super-type{font-size:10px;color:#9aa8c5;margin-top:2px;font-weight:700}
+#botStats .bs-super-dmg{font-size:11px;color:#d7e0f4;margin-top:6px;font-weight:700}
+#botStats .bs-super-dmg strong{color:var(--bs-c,#c084fc);font-size:13px}
+#botStats .bs-super-note{font-size:10px;color:#7f8dab;margin-top:4px;line-height:1.4}
+
+/* Rank name flair */
+.rn{font-weight:900;letter-spacing:.3px}
+.rn-bronze{color:#c47a3a;text-shadow:0 0 6px rgba(196,122,58,.35)}
+.rn-silber{color:#e8eef8;text-shadow:0 0 10px rgba(200,220,255,.45)}
+.rn-gold{color:#ffd34d;text-shadow:0 0 12px rgba(255,200,60,.55);animation:rnGold 2.4s ease-in-out infinite}
+.rn-diamant{background:linear-gradient(90deg,#a5d8ff,#7ec8ff,#dbeafe,#7ec8ff,#a5d8ff);background-size:200% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 6px rgba(126,200,255,.5));animation:rnShimmer 2.8s linear infinite}
+.rn-adamantium{background:linear-gradient(90deg,#fff,#b8f0ff,#e8fbff,#64f5d2,#fff);background-size:220% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 10px rgba(100,245,210,.55));animation:rnShimmer 1.8s linear infinite,rnPulse 2.2s ease-in-out infinite}
+@keyframes rnGold{0%,100%{filter:brightness(1)}50%{filter:brightness(1.25)}}
+@keyframes rnShimmer{0%{background-position:0% 50%}100%{background-position:200% 50%}}
+@keyframes rnPulse{0%,100%{filter:drop-shadow(0 0 8px rgba(100,245,210,.4))}50%{filter:drop-shadow(0 0 16px rgba(100,245,210,.75))}}
 /* ===== ROBOT STATS PANEL ===== */
 #botStats{
   width:min(100%,420px);margin:4px auto 2px;padding:12px 14px 14px;
@@ -384,6 +405,16 @@ body.playing{overscroll-behavior:none;position:fixed;width:100%;height:100%}
       <div class="bs-row"><div class="bs-lab">Schuss-Tempo</div><div class="bs-track"><div class="bs-fill" id="bsBspd"></div></div><div class="bs-val" id="bsBspdV">—</div></div>
       <div class="bs-row"><div class="bs-lab">Feuerrate</div><div class="bs-track"><div class="bs-fill" id="bsRate"></div></div><div class="bs-val" id="bsRateV">—</div></div>
       <div class="bs-row"><div class="bs-lab">Geschwindigkeit</div><div class="bs-track"><div class="bs-fill" id="bsSpd"></div></div><div class="bs-val" id="bsSpdV">—</div></div>
+      <div class="bs-super">
+        <div class="bs-super-top">
+          <span class="bs-super-tag">OVERCHARGE</span>
+          <span class="bs-super-lv" id="bsSuperLv">Lv.1</span>
+        </div>
+        <div class="bs-super-name" id="bsSuperName">—</div>
+        <div class="bs-super-type" id="bsSuperType">—</div>
+        <div class="bs-super-dmg">Schaden <strong id="bsSuperDmg">—</strong> <span id="bsSuperHits"></span></div>
+        <div class="bs-super-note" id="bsSuperNote"></div>
+      </div>
     </div>
     <div class="play-wrap"><button id="go">FIGHT</button></div>
     <div class="hint">Wähle deinen Roboter · Tippe deinen Namen</div>
@@ -565,7 +596,7 @@ function drawAim(c,p,t,tg){
 const BRS = [
   {
     id: 'nyx', name: 'NYX', icon: '◈', color: '#7bffb3', role: 'Phantom',
-    // Ghost-like assassin: very fast, low HP, short-range burst + blink
+    superInfo: { name: 'Phase Burst', type: 'Nahkampf-Burst + Blink', dmg: 15, hits: 11, note: 'Teleport nach vorn, 11 Schüsse fächerförmig' },
     hp: 78, spd: 390, rate: .09, bSpd: 920, dmg: 14, bR: 5, dash: .7, cost: 65, gCd: 4.2,
     super(p) {
       // Phase dash + shotgun burst
@@ -585,7 +616,7 @@ const BRS = [
   },
   {
     id: 'titan-x', name: 'TITAN-X', icon: '⬡', color: '#ff8c42', role: 'Juggernaut',
-    // Massive tank: slow, huge HP, ground slam + shield
+    superInfo: { name: 'Seismic Slam', type: 'Flächenschaden (AoE)', dmg: 80, hits: 3, note: '3 Schockwellen + 80 Direkt-Schaden im Umkreis' },
     hp: 195, spd: 185, rate: .48, bSpd: 380, dmg: 55, bR: 14, dash: 2.3, cost: 140, gCd: 9,
     super(p) {
       cam.sh = 42; flash(.22);
@@ -610,7 +641,7 @@ const BRS = [
   },
   {
     id: 'viper', name: 'VIPER', icon: '▣', color: '#c77dff', role: 'Railgun',
-    // Long-range laser specialist: slow fire, high damage, piercing
+    superInfo: { name: 'Triple Rail', type: 'Durchschlag / Fernkampf', dmg: 85, hits: 3, note: '3 Rail-Schüsse, durchschlagen Gegner' },
     hp: 68, spd: 300, rate: .62, bSpd: 1600, dmg: 72, bR: 3.8, dash: 1.0, cost: 75, gCd: 5.5,
     super(p) {
       // Triple rail shot with delay
@@ -636,7 +667,7 @@ const BRS = [
   },
   {
     id: 'ember', name: 'EMBER', icon: '⬡', color: '#ff4d6d', role: 'Demolisher',
-    // Explosive area control: medium everything, cluster bombs
+    superInfo: { name: 'Napalm Barrage', type: 'Fläche / Zonen', dmg: 48, hits: 9, note: '9 Explosionszonen in Schussrichtung' },
     hp: 120, spd: 255, rate: .28, bSpd: 480, dmg: 22, bR: 9, dash: 1.3, cost: 85, gCd: 6,
     super(p) {
       // Napalm zones
@@ -662,7 +693,7 @@ const BRS = [
   },
   {
     id: 'volt', name: 'VOLT', icon: '⚡', color: '#ffd23f', role: 'Storm',
-    // Electric striker: medium HP, fast projectiles, chain lightning
+    superInfo: { name: 'Chain Storm', type: 'Kette / Multi-Treffer', dmg: 22, hits: 12, note: '12 Blitze + 35 AoE-Schaden nah' },
     hp: 95, spd: 320, rate: .18, bSpd: 780, dmg: 18, bR: 6, dash: 1.1, cost: 80, gCd: 5,
     super(p) {
       // Chain lightning bolts
@@ -687,7 +718,7 @@ const BRS = [
   },
   {
     id: 'aegis', name: 'AEGIS', icon: '🛡️', color: '#4da3ff', role: 'Guardian',
-    // Defensive tank: high HP, shield pulse, barrier
+    superInfo: { name: 'Aegis Wave', type: 'Schild + AoE', dmg: 45, hits: 4, note: '4 Impuls-Ringe, kurze Unverwundbarkeit' },
     hp: 175, spd: 210, rate: .42, bSpd: 420, dmg: 28, bR: 10, dash: 1.8, cost: 110, gCd: 7.5,
     super(p) {
       // Expanding shield wave
@@ -713,7 +744,7 @@ const BRS = [
   },
   {
     id: 'hive', name: 'HIVE', icon: '🐝', color: '#5dff7a', role: 'Swarm',
-    // Swarm controller: drones, medium stats
+    superInfo: { name: 'Drone Swarm', type: 'Schwarm / Multi-Projektile', dmg: 16, hits: 14, note: '14 Drohnen-Schüsse rundum' },
     hp: 100, spd: 280, rate: .22, bSpd: 520, dmg: 12, bR: 5.5, dash: 1.2, cost: 90, gCd: 5.5,
     super(p) {
       // Release drone swarm
@@ -737,7 +768,7 @@ const BRS = [
   },
   {
     id: 'nova', name: 'NOVA', icon: '✦', color: '#ff5fd2', role: 'Starcaster',
-    // Cosmic caster: star bursts, high damage AOE
+    superInfo: { name: 'Star Nova', type: 'Sternen-Explosion (AoE)', dmg: 55, hits: 3, note: '3 Ringe + 55 direkten Flächenschaden' },
     hp: 88, spd: 270, rate: .35, bSpd: 640, dmg: 26, bR: 7, dash: 1.4, cost: 95, gCd: 6.2,
     super(p) {
       // Star nova explosion
@@ -810,6 +841,18 @@ function showBotStats(b) {
   set('bsRate', statPct(b.rate, STAT_RANGES.rate, true), rps.toFixed(1) + '/s');
   /* Spieler-Bewegungsgeschwindigkeit */
   set('bsSpd', statPct(b.spd, STAT_RANGES.spd, false), String(b.spd));
+  /* Overcharge / Super */
+  const si = b.superInfo || { name: 'Overcharge', type: 'Spezial', dmg: b.dmg * 3, hits: 1, note: '' };
+  const lv = (typeof getSuperLevel === 'function') ? getSuperLevel(typeof RP === 'number' ? RP : 0) : 1;
+  const mul = (typeof superMul === 'function') ? superMul(lv) : 1;
+  const sd = Math.round((si.dmg || 0) * mul);
+  const el = id => document.getElementById(id);
+  if (el('bsSuperLv')) el('bsSuperLv').textContent = 'Lv.' + lv;
+  if (el('bsSuperName')) el('bsSuperName').textContent = si.name || 'Overcharge';
+  if (el('bsSuperType')) el('bsSuperType').textContent = si.type || '';
+  if (el('bsSuperDmg')) el('bsSuperDmg').textContent = String(sd);
+  if (el('bsSuperHits')) el('bsSuperHits').textContent = si.hits ? ('· bis ' + si.hits + ' Treffer') : '';
+  if (el('bsSuperNote')) el('bsSuperNote').textContent = (si.note || '') + (lv > 1 ? '  ·  Rang-Bonus ×' + mul.toFixed(2) : '  ·  Ab Silber steigt das Level');
 }
 BRS.forEach((b, i) => {
   const c = document.createElement('div');
@@ -1000,7 +1043,13 @@ function fDmg(x, y, v, c = '#fff') { if (window.__ocSettings && window.__ocSetti
 function feed(t) { if (window.__ocSettings && window.__ocSettings.feed === false) return; const el = document.createElement('div'); el.className = 'km'; el.textContent = t; document.getElementById('feed').prepend(el); setTimeout(() => el.remove(), 2300); }
 function msg(t, d = 1.1) { const el = document.getElementById('msg'); el.innerHTML = t; el.style.opacity = '1'; setTimeout(() => el.style.opacity = '0', d * 1000); }
 function showStreak(n) { const el = document.getElementById('streak'); el.textContent = n >= 8 ? 'GODLIKE x' + n : n >= 5 ? 'LEGENDARY x' + n : n >= 3 ? 'RAMPAGE x' + n : 'SPREE x' + n; el.style.opacity = '1'; setTimeout(() => el.style.opacity = '0', 900); sfx.streak(); }
-function bullet(x, y, a, spd, dmg, r, fp, col, life = 1, pierce = 0, owner = null) { const bx = x + Math.cos(a) * (fp ? 20 : 13), by = y + Math.sin(a) * (fp ? 20 : 13); bullets.push({ x: bx, y: by, vx: Math.cos(a) * spd, vy: Math.sin(a) * spd, life, dmg, r, fp, col, pierce, trail: [], hit: new Set(), owner }); }
+function bullet(x, y, a, spd, dmg, r, fp, col, life = 1, pierce = 0, owner = null) {
+  if (window.__superDmgMul && window.__superDmgMul !== 1 && fp) {
+    dmg = Math.round((dmg || 0) * window.__superDmgMul);
+  }
+  const bx = x + Math.cos(a) * (fp ? 20 : 13), by = y + Math.sin(a) * (fp ? 20 : 13);
+  bullets.push({ x: bx, y: by, vx: Math.cos(a) * spd, vy: Math.sin(a) * spd, life, dmg, r, fp, col, pierce, trail: [], hit: new Set(), owner });
+}
 
 function getAllTargets(ex) { const l = []; if (P.alive && P !== ex) l.push(P); for (const b of bots) if (b.alive && b !== ex) l.push(b); return l; }
 function findBestTarget(bot) { const ts = getAllTargets(bot); if (!ts.length) return null; let best = null, bs = -1e9; for (const t of ts) { const d = dist(bot, t), hpR = t.hp / (t.max || 100); let s = -d * .72 + (1 - hpR) * 160 + (t === P ? 28 : 0) + (d < 160 ? 55 : 0) - (d > 520 ? 80 : 0) + (Math.random() - .5) * 25; if (s > bs) { bs = s; best = t; } } return best; }
@@ -1097,7 +1146,14 @@ function update(dt) {
   if (P.dT > 0 || ml > 0.2) { P.trail.push({ x: P.x, y: P.y, life: .14 }); if (P.trail.length > 20) P.trail.shift(); }
   for (let i = P.trail.length - 1; i >= 0; i--) { P.trail[i].life -= dt; if (P.trail[i].life <= 0) P.trail.splice(i, 1); }
 
-  if (inp.super && P.sup >= P.cost && P.alive) { P.sup = 0; inp.super = 0; sfx.super(); P.br.super(P); msg('OVERCHARGE!', .5); }
+  if (inp.super && P.sup >= P.cost && P.alive) {
+    P.sup = 0; inp.super = 0; sfx.super();
+    const lv = (typeof getSuperLevel === 'function') ? getSuperLevel(typeof RP === 'number' ? RP : 0) : 1;
+    P.superLv = lv;
+    window.__superDmgMul = (typeof superMul === 'function') ? superMul(lv) : 1;
+    try { P.br.super(P); } finally { window.__superDmgMul = 1; }
+    msg('OVERCHARGE <small style="font-size:14px;opacity:.75">Lv.' + lv + '</small>', .55);
+  }
   document.getElementById('bu').classList.toggle('r', P.sup >= P.cost);
   if (inp.gad && P.gCd <= 0 && P.alive) { P.gCd = P.gMax; inp.gad = 0; sfx.gad(); P.br.gadget(P); }
   document.getElementById('bg').classList.toggle('r', P.gCd <= 0);
@@ -1242,7 +1298,7 @@ function update(dt) {
           bullets.splice(i, 1); continue;
         }
         P.hp -= b.dmg || 9; P.sup = Math.min(P.cost, P.sup + 2.5); burst(b.x, b.y, '#ff4d7a', 10, 140); fDmg(P.x, P.y - 24, Math.round(b.dmg || 9), '#ff6b6b'); cam.sh = 8; sfx.hurt(); if (typeof haptic === 'function') haptic(18); bullets.splice(i, 1);
-        if (P.hp <= 0) { P.hp = 0; P.alive = 0; burst(P.x, P.y, P.col, 70, 500); flash(.2); end(0); } continue;
+        if (P.hp <= 0) { P.hp = 0; P.alive = 0; P._deaths = (P._deaths|0) + 1; burst(P.x, P.y, P.col, 70, 500); flash(.2); end(0); } continue;
       }
     }
     if (b.fp || (b.owner && b.owner !== P)) {
@@ -1327,6 +1383,9 @@ function update(dt) {
 }
 
 function dmgBot(bot, dmg, isSuper) {
+  if (isSuper && window.__superDmgMul && window.__superDmgMul !== 1) {
+    dmg = Math.round((dmg || 0) * window.__superDmgMul);
+  }
   /* Live-Match: Host owns bots; non-host only reports hits */
   if (typeof LIVE !== 'undefined' && LIVE.att) {
     if (typeof window.__liveDmgBot === 'function') return window.__liveDmgBot(bot, dmg, isSuper);
@@ -1355,7 +1414,14 @@ function dmgBot(bot, dmg, isSuper) {
     }, 2800);
   }
 }
-function end(won) { over = 1; msg(won ? 'VICTORY<br><small style="font-size:13px">Overcharged</small>' : 'DEFEAT<br><small style="font-size:13px">Try again</small>', 4.5); setTimeout(() => { document.getElementById('menu').classList.remove('hide');document.body.classList.remove('playing'); document.getElementById('hud').classList.remove('show'); run = 0; }, 4000); }
+function end(won) {
+  over = 1;
+  if (!window.__rpInfo && P) {
+    window.__rpInfo = { mode: 'solo', k: P.kills|0, d: (P._deaths|0), secs: 180 - (time||0), place: won ? 1 : 2, n: 1 };
+  }
+  msg(won ? 'VICTORY<br><small style="font-size:13px">Overcharged</small>' : 'DEFEAT<br><small style="font-size:13px">Try again</small>', 4.5);
+  setTimeout(() => { document.getElementById('menu').classList.remove('hide');document.body.classList.remove('playing'); document.getElementById('hud').classList.remove('show'); run = 0; }, 4000);
+}
 
 function draw() {
   const g = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, Math.max(W, H) * .7);
@@ -1400,9 +1466,9 @@ function drawC(x, y, r, a, col, hpR, isP, modelId, t, playerName) {
   }
   if (hpR < .99) { const bw = r * 1.6, bh = 4.5; ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(x - bw / 2, y - r - 14, bw, bh); ctx.fillStyle = hpR > .2 ? '#2ecc71' : '#e74c3c'; ctx.fillRect(x - bw / 2, y - r - 14, bw * Math.max(0, hpR), bh); }
   // Namen werden unabhängig von der Lebensbalken- und Treffer-Animation immer unter dem Roboter gerendert.
-  drawPlayerName(x, y + r + 13, playerName || (isP ? 'Spieler' : 'Bot'), col, !!isP);
+  drawPlayerName(x, y + r + 13, playerName || (isP ? 'Spieler' : 'Bot'), col, !!isP, isP ? (typeof RP === 'number' ? RP : 0) : 0);
 }
-function drawPlayerName(x, y, rawName, color, isPlayer) {
+function drawPlayerName(x, y, rawName, color, isPlayer, rp) {
   const label = String(rawName || (isPlayer ? 'Spieler' : 'Bot')).trim().slice(0, 16) || (isPlayer ? 'Spieler' : 'Bot');
   ctx.save();
   ctx.globalAlpha = 1;
@@ -1411,14 +1477,23 @@ function drawPlayerName(x, y, rawName, color, isPlayer) {
   const textW = ctx.measureText(label).width;
   const w = Math.min(136, Math.max(38, textW + 16)), h = isPlayer ? 19 : 17;
   const left = x - w / 2, top = y - h / 2;
-  ctx.shadowColor = color; ctx.shadowBlur = isPlayer ? 12 : 5;
+  let nameCol = '#fff', glow = color;
+  if (isPlayer && typeof rankInfo === 'function') {
+    try {
+      const ri = rankInfo(rp != null ? rp : (typeof RP === 'number' ? RP : 0));
+      nameCol = ri.col || '#fff';
+      glow = ri.col || color;
+      if ((ri.tier|0) >= 3) ctx.shadowBlur = 16;
+    } catch (e) {}
+  }
+  ctx.shadowColor = glow; ctx.shadowBlur = isPlayer ? 12 : 5;
   ctx.fillStyle = isPlayer ? 'rgba(3,20,28,.94)' : 'rgba(5,7,18,.88)';
   rr(ctx, left, top, w, h, 6); ctx.fill();
   ctx.shadowBlur = 0;
-  ctx.strokeStyle = isPlayer ? color : 'rgba(255,255,255,.22)'; ctx.lineWidth = 1;
+  ctx.strokeStyle = isPlayer ? glow : 'rgba(255,255,255,.22)'; ctx.lineWidth = 1;
   rr(ctx, left, top, w, h, 6); ctx.stroke();
-  ctx.fillStyle = '#fff';
-  ctx.shadowColor = '#000'; ctx.shadowBlur = 3;
+  ctx.fillStyle = nameCol;
+  ctx.shadowColor = glow; ctx.shadowBlur = isPlayer ? 6 : 3;
   ctx.fillText(label, x, y, w - 10);
   ctx.restore();
 }
@@ -1862,20 +1937,51 @@ const st=document.createElement('style');st.textContent=`
 `;document.head.appendChild(st);
 
 /* ===== RANGSYSTEM: Bronze 3→1 · Silber · Gold · Diamant · Adamantium 3→1 =====
-   Divisionen werden breiter (schwerer), RP-Gewinne fallen mit dem Rang, Verluste bleiben mild. */
-const TIERS=[['BRONZE','#cd7f32','🥉'],['SILBER','#c8d0e0','🥈'],['GOLD','#ffd34d','🥇'],['DIAMANT','#6ab7ff','💎'],['ADAMANTIUM','#b8f0ff','🛡️']];
-/* RP-Breite pro Division (3 Div pro Tier): Bronze leicht, Adamantium anspruchsvoll */
-const DIV_W=[50,50,50, 70,70,70, 90,90,90, 110,110,110, 140,140,140];
+   Sehr langsame Progression. Super-Waffe Level = Tier+1 (Bronze1 … Adamantium5). */
+const TIERS=[
+  ['BRONZE','#c47a3a','🥉','bronze'],
+  ['SILBER','#d5deee','🥈','silber'],
+  ['GOLD','#ffd34d','🥇','gold'],
+  ['DIAMANT','#7ec8ff','💎','diamant'],
+  ['ADAMANTIUM','#e8fbff','🛡️','adamantium']
+];
+/* Breite pro Division – Summe bis Adamantium 1 ≈ 6000+ RP */
+const DIV_W=[
+  100,130,160,   /* Bronze 3,2,1 */
+  200,240,280,   /* Silber 3,2,1 */
+  320,380,450,   /* Gold 3,2,1 */
+  520,600,700,   /* Diamant 3,2,1 */
+  800,950,1200   /* Adamantium 3,2,1 */
+];
 const DIV_CUM=(function(){const a=[0];for(const w of DIV_W)a.push(a[a.length-1]+w);return a})();
 function rankInfo(rp){rp=Math.max(0,rp|0);
   if(rp>=DIV_CUM[DIV_CUM.length-1]){
     const p=rp-DIV_CUM[DIV_CUM.length-1];
-    return{lvl:15,col:'#e8fbff',ico:'🛡️',pts:p,pct:100,name:'ADAMANTIUM 1',short:'ADAMANTIUM 1 · '+p,sub:p+' RP (Elite)'};
+    const T=TIERS[4];
+    return{lvl:14,tier:4,div:1,col:T[1],ico:T[2],cls:T[3],pts:p,pct:100,name:'ADAMANTIUM 1',short:'ADAMANTIUM 1 · '+p,sub:p+' RP (Elite)',superLv:5};
   }
   let i=0;while(i<DIV_W.length&&rp>=DIV_CUM[i+1])i++;
   const t=Math.floor(i/3),d=3-(i%3),w=DIV_W[i],p=rp-DIV_CUM[i],T=TIERS[t];
-  return{lvl:i,col:T[1],ico:T[2],pts:p,pct:Math.min(100,p/w*100),name:T[0]+' '+d,short:T[0]+' '+d+' · '+p,sub:p+'/'+w+' RP'};
+  return{lvl:i,tier:t,div:d,col:T[1],ico:T[2],cls:T[3],pts:p,pct:Math.min(100,p/w*100),name:T[0]+' '+d,short:T[0]+' '+d+' · '+p,sub:p+'/'+w+' RP',superLv:t+1};
 }
+function getSuperLevel(rp){
+  try{
+    if(typeof rankInfo!=='function')return 1;
+    const r=rankInfo(rp!=null?rp:(typeof RP==='number'?RP:0));
+    return Math.max(1,Math.min(5,r.superLv||((r.tier|0)+1)));
+  }catch(e){return 1}
+}
+function superMul(lv){lv=lv||getSuperLevel();return 1+(lv-1)*0.22} /* L5 ≈ +88% Schaden */
+
+function rankNameHTML(name, rp){
+  const r = rankInfo(rp|0);
+  const cls = r.cls || 'bronze';
+  return `<span class="rn rn-${cls}" title="${r.name}">${String(name||'Pilot').replace(/[<>&]/g,'')}</span>`;
+}
+function rankNameClass(rp){
+  return 'rn rn-' + ((rankInfo(rp|0).cls)||'bronze');
+}
+
 let RP=0,user=null,fdb=null,fauth=null,online=0,board=[];
 const save=()=>{};const ranked=()=>!!(user&&!user.isAnonymous);
 try{fauth=firebase.auth();fdb=firebase.database();}catch(e){console.warn('RTDB nicht verfügbar:',e)}
@@ -1901,17 +2007,20 @@ const bu=$('bu'),bg=$('bg'),bd=$('bd');
 bu.insertAdjacentHTML('beforeend','<div id="buc">0%</div>');const buc=$('buc');
 
 function podHTML(l){return '<div class="pod">'+[1,0,2].map(i=>{const p=l[i],r=rankInfo(p?p.rp:0);
-  return `<div class="pc p${i+1}"><div class="pm">${['🥇','🥈','🥉'][i]}</div><div class="pn">${p?esc(p.name):'—'}</div><div class="pr" style="color:${r.col}">${p?r.short:'frei'}</div><div class="pb"><span>${p?p.rp:0}</span></div></div>`}).join('')+'</div>'}
+  return `<div class="pc p${i+1}"><div class="pm">${['🥇','🥈','🥉'][i]}</div><div class="pn">${p?rankNameHTML(p.name,p.rp):'—'}</div><div class="pr" style="color:${r.col}">${p?r.ico+' '+r.name:'frei'}</div><div class="pb"><span>${p?p.rp:0}</span></div></div>`}).join('')+'</div>'}
 function renderBoard(){
   const h=podHTML(board);document.querySelectorAll('.podium-host').forEach(e=>e.innerHTML=h);
   const rowsHtml=board.slice(3).map((p,i)=>{const r=rankInfo(p.rp),me=user&&p.uid===user.uid;
-    return `<div class="rank-row" style="${me?'border-color:#00ffd0':''}"><span class="rank-number">#${i+4}</span><span class="rank-player">${esc(p.name)}<small class="rank-sub" style="color:${r.col}">${r.short} · ${p.wins|0} Siege</small></span><span class="rank-score">${p.rp|0} RP</span></div>`}).join('')||(board.length?'':'<div class="online-muted">Noch keine Piloten. Melde dich an und sei der Erste!</div>');
+    return `<div class="rank-row" style="${me?'border-color:#00ffd0':''}"><span class="rank-number">#${i+4}</span><span class="rank-player">${rankNameHTML(p.name,p.rp)}<small class="rank-sub" style="color:${r.col}">${r.ico} ${r.name} · ${p.wins|0} Siege</small></span><span class="rank-score">${p.rp|0} RP</span></div>`}).join('')||(board.length?'':'<div class="online-muted">Noch keine Piloten. Melde dich an und sei der Erste!</div>');
   if($('rtRows'))$('rtRows').innerHTML=rowsHtml;
   if($('rankRailRows'))$('rankRailRows').innerHTML=rowsHtml;
 }
 function renderRank(){
   const rk=ranked(),r=rk?rankInfo(RP):{col:'#6f7d9c',ico:'🔒',name:'UNGERANKT',pts:0,pct:0,sub:'Melde dich an, um zu ranken'};card.style.setProperty('--rc',r.col);
-  $('rbBadge').textContent=r.ico;$('rbName').textContent=rk?r.name+' · '+r.pts+' RP':r.name;
+  $('rbBadge').textContent=r.ico;
+  const rb=$('rbName');
+  if(rk){rb.innerHTML=`<span class="rn rn-${r.cls||'bronze'}">${r.name}</span> · ${r.pts} RP · Super Lv.${r.superLv||1}`;}
+  else{rb.textContent=r.name}
   $('rbFill').style.width=Math.min(100,r.pct)+'%';
   $('rbSub').textContent=r.sub+(online?' · 🟢 '+online+' online':'');
   $('onlineCnt').textContent=online?'🟢 '+online+' online':'';
@@ -1944,44 +2053,41 @@ function popRP(d,a,b){
 }
 /* Fair: Platzierung + Kills/Tode, Tier-Steuer, Divisions-Schutz, Mindestspielzeit, Bot-Kills zählen nicht für RP */
 function calcDelta(won,i){
-  /* tier 0=Bronze … 4=Adamantium – Aufstieg schnell unten, anspruchsvoller oben, Verluste mild */
-  let tier=0;
-  for(let t=0;t<5;t++){if(RP>=DIV_CUM[t*3])tier=t}
-  const gainMul=[1.7,1.4,1.15,1.0,0.85][tier];
-  const lossMul=[0.25,0.4,0.55,0.7,0.85][tier];
-  const winBonus=[12,8,5,3,2][tier];
-  const minSecs=[20,30,40,45,45][tier];
-  if(i.mode==='live'){
-    if(i.secs<minSecs)return null;
-    const n=i.n|0,d=i.d|0;
-    const hk=Math.max(0,i.humanKills!=null?i.humanKills:0)|0;
-    const bk=Math.max(0,i.botKills!=null?i.botKills:Math.max(0,(i.k|0)-hk))|0;
-    const diff=i.diff||'mid';
-    const botW={easy:0.35,mid:0.7,hard:1.15}[diff]||0.7;
-    const botBoost=[1.5,1.25,1.1,1,0.9][tier];
-    const pf=n>1?(n-i.place)/(n-1):Math.max(0,Math.min(1,.5+(hk-d)*.08));
-    let x=(pf-.5)*42
-      +Math.min(hk,8)*2.4
-      +Math.min(bk,12)*0.9*botW*botBoost
-      -Math.min(d,8)*.8
-      -tier*1.5;
-    if(n===1)x*=0.75;
-    if(won)x+=6+winBonus;
-    if(x>0)x*=gainMul; else x*=lossMul;
-    if(tier===0&&x<0)x=Math.max(-4,x);
-    if(tier===1&&x<0)x=Math.max(-8,x);
-    const hi=[58,50,44,40,36][tier], lo=[-8,-12,-16,-20,-22][tier];
-    return Math.round(Math.max(lo,Math.min(hi,x)));
+  /* RP nur aus Kills. Minus nur wenn Tode > Kills. Sonst nie negativ. */
+  i=i||{};
+  if(i.secs!=null && i.secs<40)return null;
+  const kills = i.mode==='live'
+    ? Math.max(0,(i.humanKills|0)+(i.botKills|0))
+    : Math.max(0,i.k|0);
+  const deaths = Math.max(0,i.d|0);
+  const r = rankInfo(RP);
+  const tier = r.tier|0;
+  /* Abstieg nur bei klar negativer Bilanz */
+  if(deaths>kills){
+    const gap = deaths-kills;
+    let loss = -(2+gap*2);           /* -2, -4, -6 … */
+    loss = Math.max(-14, loss);      /* Deckel */
+    /* hohe Ränge verlieren etwas mehr, Bronze fast nichts */
+    loss = Math.round(loss * [0.55,0.75,0.9,1,1.1][tier]);
+    if(tier===0) loss = Math.max(-4, loss);
+    return loss;
   }
-  const k=Math.max(0,i.k|0);
-  if(won)return Math.round((18+Math.min(12,k)+winBonus)*gainMul);
-  let loss=-(8+tier*2)+Math.min(8,k);
-  loss=Math.round(loss*lossMul);
-  if(tier===0)loss=Math.max(-4,loss);
-  if(tier===1)loss=Math.max(-7,loss);
-  return loss;
+  /* Gewinn: klar kill-basiert */
+  let gain = kills * 5;              /* 5 RP pro Kill */
+  if(kills>=1) gain += 3;            /* Teilnahme-Bonus */
+  if(kills>=5) gain += 4;            /* Spree */
+  if(kills>=8) gain += 6;
+  if(won) gain += 6;
+  if(i.mode==='live'){
+    if((i.place|0)===1) gain += 8;
+    else if((i.place|0)===2) gain += 4;
+    gain += Math.min(10,(i.humanKills|0)*2); /* PvP-Kills extra */
+  }
+  /* Höhere Ränge steigen langsamer */
+  gain = Math.round(gain * [1,0.92,0.82,0.72,0.6][tier]);
+  return Math.max(0, Math.min(48, gain));
 }
-function applyDelta(rp,d){
+function applyDeltafunction applyDelta(rp,d){
   let n=Math.max(0,rp+d);
   if(d<0){
     /* Divisions-Schutz: kein Abstieg mitten in der Division */
@@ -2003,6 +2109,7 @@ async function applyRP(won,info){
     if(r.snapshot.exists())next=r.snapshot.val().rp|0;
   }catch(e){console.warn('RP speichern:',e)}}
   RP=next;renderRank();
+  try{if(typeof showBotStats==='function'&&typeof sel!=='undefined')showBotStats(sel)}catch(e){}
   if(window.rankAnim)window.rankAnim(prev,next,detail);
 }
 /* ===== MAPS ===== */
