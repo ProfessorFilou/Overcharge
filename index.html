@@ -383,8 +383,10 @@ html,body{height:100%;min-height:0;overflow:hidden}
 .profile-stat span{font-size:9px;font-weight:800;letter-spacing:.6px;color:#8c9ab8;text-transform:uppercase}
 .profile-ach-title{font-size:11px;font-weight:900;letter-spacing:1.2px;color:#c084fc;text-transform:uppercase;margin:14px 0 8px}
 .ach-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.ach-item{display:flex;gap:8px;align-items:flex-start;padding:9px;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);opacity:.38;filter:grayscale(.7)}
-.ach-item.on{opacity:1;filter:none;border-color:rgba(100,245,210,.28);background:rgba(100,245,210,.06)}
+.ach-item{display:flex;gap:8px;align-items:flex-start;padding:9px;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);opacity:.4;filter:grayscale(1);transition:opacity .2s,filter .2s,border-color .2s,background .2s,box-shadow .2s}
+.ach-item.on{opacity:1;filter:none;border-color:rgba(100,245,210,.55);background:linear-gradient(135deg,rgba(100,245,210,.14),rgba(192,132,252,.1));box-shadow:0 0 16px rgba(100,245,210,.18)}
+.ach-item.on .ach-meta strong{color:#64f5d2}
+.ach-item.on .ach-ico{filter:drop-shadow(0 0 6px rgba(100,245,210,.5))}
 .ach-ico{font-size:20px;line-height:1;flex-shrink:0;width:28px;text-align:center}
 .ach-meta{min-width:0}
 .ach-meta strong{display:block;font-size:11px;font-weight:900;color:#eef3ff}
@@ -2234,8 +2236,17 @@ function applyDelta(rp,d){
   return n;
 }
 async function applyRP(won,info){
+  info=info||{mode:'solo',k:P&&P.kills|0};
+  /* Achievements IMMER werten – auch ohne Account / bei kurzem Match */
+  try{
+    const d0 = calcDelta(won,info);
+    const bag = evaluateAchievements(Object.assign({},info,{won:!!won}), d0==null?0:d0, loadLocalAch());
+    if(fdb&&user&&!user.isAnonymous){
+      fdb.ref('leaderboard/'+user.uid).update({ach:bag}).catch(()=>{});
+    }
+    try{refreshAccountAch()}catch(e){}
+  }catch(e){console.warn('ach',e)}
   if(!ranked()){setTimeout(()=>msg('UNGERANKT<br><small style="font-size:13px">Melde dich an, um RP zu sammeln</small>',3),1500);return}
-  info=info||{mode:'solo',k:P.kills|0};
   const d=calcDelta(won,info);
   if(d===null){setTimeout(()=>msg('ZU KURZ<br><small style="font-size:13px">Zu kurz verlassen – mind. 45 s oder Kills/Tode nötig</small>',3),1500);return}
   const detail=info.mode==='live'?`Platz ${info.place}/${info.n} · ${info.humanKills|0} Spieler · ${info.botKills|0} Bots (${({easy:'leicht',mid:'mittel',hard:'schwer'}[info.diff]||'mittel')}) · ${info.d} Tode`:`${info.k} Kills · ${won?'Sieg':'Niederlage'}`;
@@ -2245,10 +2256,12 @@ async function applyRP(won,info){
     if(r.snapshot.exists())next=r.snapshot.val().rp|0;
   }catch(e){console.warn('RP speichern:',e)}}
   RP=next;renderRank();
+  /* Rang-Abzeichen nach RP-Update nochmal prüfen */
   try{
-    const bag=evaluateAchievements(Object.assign({},info,{won:!!won}),d,loadLocalAch());
-    if(fdb&&user){fdb.ref('leaderboard/'+user.uid).update({ach:bag}).catch(()=>{})}
-  }catch(e){console.warn('ach',e)}
+    const bag2=evaluateAchievements(Object.assign({},info,{won:!!won}),d,loadLocalAch());
+    if(fdb&&user) fdb.ref('leaderboard/'+user.uid).update({ach:bag2,rp:next}).catch(()=>{});
+    refreshAccountAch();
+  }catch(e){}
 
   try{if(typeof showBotStats==='function'&&typeof sel!=='undefined')showBotStats(sel)}catch(e){}
   if(window.rankAnim)window.rankAnim(prev,next,detail);
@@ -2258,11 +2271,13 @@ async function applyRP(won,info){
 function refreshAccountAch(){
   const el=$('accountAch');
   if(!el)return;
-  const bag=(user&&!user.isAnonymous)?(function(){
-    const fromBoard=board.find(p=>p.uid===user.uid);
-    if(fromBoard&&fromBoard.ach)return fromBoard.ach;
-    return loadLocalAch();
-  })():loadLocalAch();
+  let bag=loadLocalAch();
+  try{
+    if(user&&!user.isAnonymous){
+      const fromBoard=board.find(p=>p.uid===user.uid);
+      if(fromBoard&&fromBoard.ach) bag=Object.assign({},bag,fromBoard.ach);
+    }
+  }catch(e){}
   el.innerHTML=typeof achListHTML==='function'?achListHTML(bag):'';
 }
 /* ===== ACHIEVEMENTS + PROFIL ===== */
@@ -2286,7 +2301,20 @@ const ACHIEVEMENTS = [
 ];
 function loadLocalAch(){try{return JSON.parse(localStorage.getItem('overcharge_ach_v1')||'{}')}catch(e){return{}}}
 function saveLocalAch(a){try{localStorage.setItem('overcharge_ach_v1',JSON.stringify(a||{}))}catch(e){}}
-function unlockAch(id,bag){bag=bag||loadLocalAch();if(bag[id])return false;bag[id]=Date.now();saveLocalAch(bag);return true}
+function unlockAch(id,bag){
+  bag=bag||loadLocalAch();
+  if(!id||id.charAt(0)==='_')return false;
+  if(bag[id])return false;
+  bag[id]=Date.now();
+  saveLocalAch(bag);
+  try{
+    if(typeof board!=='undefined'&&user&&board.length){
+      const me=board.find(p=>p.uid===user.uid);
+      if(me){me.ach=Object.assign({},bag);delete me.ach._matches}
+    }
+  }catch(e){}
+  return true
+}
 function showAchToast(list){
   if(!list||!list.length)return;
   let el=document.getElementById('achToast');
@@ -2365,7 +2393,12 @@ function openProfile(p){
   document.getElementById('pfWins').textContent=p.wins|0;
   document.getElementById('pfRP').textContent=p.rp|0;
   document.getElementById('pfMatch').textContent=p.matches|0;
-  const ach=(p.ach&&typeof p.ach==='object')?p.ach:(user&&p.uid===user.uid?loadLocalAch():{});
+  let ach={};
+  if(user&&p.uid===user.uid){
+    ach=Object.assign({},loadLocalAch(),(p.ach&&typeof p.ach==='object')?p.ach:{});
+  }else if(p.ach&&typeof p.ach==='object'){
+    ach=p.ach;
+  }
   document.getElementById('pfAch').innerHTML=achListHTML(ach);
   modal.classList.add('on');
 }
@@ -2737,10 +2770,15 @@ lobby.innerHTML=`<div class="lbw"><h2>ONLINE LOBBY</h2>
 <div class="online-muted" style="margin-top:10px;font-size:10px;letter-spacing:1px">BOTS AUFFÜLLEN (MAX. 10 SPIELER GESAMT)</div>
 <div id="lbBots" class="lbseg">
   <button type="button" data-bots="0">0</button>
+  <button type="button" data-bots="1">1</button>
   <button type="button" data-bots="2">2</button>
+  <button type="button" data-bots="3">3</button>
   <button type="button" data-bots="4" class="on">4</button>
+  <button type="button" data-bots="5">5</button>
   <button type="button" data-bots="6">6</button>
+  <button type="button" data-bots="7">7</button>
   <button type="button" data-bots="8">8</button>
+  <button type="button" data-bots="9">9</button>
 </div>
 <div class="online-muted" style="margin-top:10px;font-size:10px;letter-spacing:1px">KI-SCHWIERIGKEIT (NUR HOST)</div>
 <div id="lbDiff"><button data-d="easy" class="on">LEICHT</button><button data-d="mid">MITTEL</button><button data-d="hard">SCHWER</button></div>
@@ -3724,7 +3762,12 @@ window.update = function (dt) {
       const all = [{ id: sid, gt: LIVE.gt }, ...players.map(r => ({ id: r.uid, gt: r.gt || 0 }))]
         .sort((a, b) => a.gt - b.gt || (a.id < b.id ? -1 : 1));
       const host = all[0].id === sid;
-      const want = Math.max(0, 10 - all.length);
+      /* botFill aus Lobby – nicht immer auf 10 auffüllen */
+      let fill = 0;
+      if (LIVE.meta && LIVE.meta.botFill != null) fill = LIVE.meta.botFill | 0;
+      else if (LIVE.botFill != null) fill = LIVE.botFill | 0;
+      fill = Math.max(0, Math.min(10, fill));
+      const want = Math.max(0, Math.min(fill, 10 - all.length));
       if (host) {
         if (!LIVE.host) {
           LIVE.host = true;
