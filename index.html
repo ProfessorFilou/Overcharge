@@ -1018,12 +1018,11 @@ const ctx = canvas.getContext('2d');
 const mmC = document.getElementById('mm'), mmX = mmC.getContext('2d');
 let W, H, VIEW_Z = 1;
 function viewZoom() {
-  /* Handy: weiter rauszoomen für PC-ähnliche Übersicht */
+  /* Handy: moderate Übersicht – nicht zu extrem (sonst wirken Bots „außerhalb“) */
   try {
     if (typeof IS_MOBILE !== 'undefined' && IS_MOBILE) {
       const short = Math.min(W || innerWidth, H || innerHeight);
-      /* schmale Phones stärker raus (0.58–0.72) */
-      return short < 400 ? 0.58 : (short < 520 ? 0.64 : 0.70);
+      return short < 400 ? 0.68 : (short < 520 ? 0.74 : 0.80);
     }
   } catch (e) {}
   return 1;
@@ -2785,9 +2784,9 @@ lobby.innerHTML=`<div class="lbw"><h2>ONLINE LOBBY</h2>
   <button type="button" data-dur="300">5 MIN</button>
 </div>
 <div id="lbKillOpts" class="lbseg" style="margin-top:6px;display:none">
-  <button type="button" data-kills="5">5 KILLS</button>
-  <button type="button" data-kills="10" class="on">10 KILLS</button>
-  <button type="button" data-kills="20">20 KILLS</button>
+  <button type="button" data-kills="5">+5 KILLS</button>
+  <button type="button" data-kills="10" class="on">+10 KILLS</button>
+  <button type="button" data-kills="20">+20 KILLS</button>
 </div>
 <div class="online-muted" style="margin-top:10px;font-size:10px;letter-spacing:1px">BOTS AUFFÜLLEN (MAX. 10 SPIELER GESAMT)</div>
 <div id="lbBots" class="lbseg">
@@ -2905,9 +2904,9 @@ async function refreshList(){
     rows.sort((a,b)=>(b.playing===a.playing?0:(b.playing?-1:1))||b.n-a.n);
     const show=rows.slice(0,10);
     box.innerHTML=show.length?show.map(o=>{
-      const full=o.n>=10,over=o.playing&&o.left<=12;
+      const full=o.n>=10&&!o.playing,over=false;
       const dlabel={easy:'LEICHT',mid:'MITTEL',hard:'SCHWER'}[o.diff]||'MITTEL';
-      return `<div class="rm"><div class="i"><b>${o.code}</b><span class="tag ${o.playing?'p':'l'}">${o.playing?'LÄUFT':'LOBBY'}</span><small>👑 ${o.host} · ${o.n}/10 · KI ${dlabel}${o.playing?' · 🗺 '+clean(o.map)+' · ⏱ '+fmtT(o.left):''}</small></div><button class="online-action" data-code="${o.code}"${full||over?' disabled':''}>${full?'VOLL':over?'ENDET':o.playing?'ZUSCHAUEN':'BEITRETEN'}</button></div>`}).join('')
+      return `<div class="rm"><div class="i"><b>${o.code}</b><span class="tag ${o.playing?'p':'l'}">${o.playing?'LÄUFT':'LOBBY'}</span><small>👑 ${o.host} · ${o.n}/10 · KI ${dlabel}${o.playing?' · 🗺 '+clean(o.map)+' · ⏱ '+fmtT(o.left):''}</small></div><button class="online-action" data-code="${o.code}"${full?' disabled':''}>${full?'VOLL':o.playing?'ZUSCHAUEN':'BEITRETEN'}</button></div>`}).join('')
       :'<div class="online-muted" style="padding:10px">Keine aktiven Lobbys. Erstelle einen Raum oder Quick Match.</div>';
   }catch(e){box.innerHTML='<div class="online-muted" style="padding:10px">Raumliste nicht ladbar ('+clean(e&&(e.code||e.message))+'). Prüfe die Rules für „rooms2“.</div>'}
 }
@@ -2916,8 +2915,11 @@ function syncList(){
   if(on&&!listIv){refreshList();listIv=setInterval(refreshList,3500)}
   else if(!on&&listIv){clearInterval(listIv);listIv=null}
 }
-$('lbList').addEventListener('click',e=>{const b=e.target.closest('[data-code]');if(!b||b.disabled)return;lmsg('');
-  ensureSid().then(()=>enter(b.dataset.code,false)).catch(er=>lmsg((er&&er.message)||String(er)))});
+$('lbList').addEventListener('click',e=>{
+  const b=e.target.closest('[data-code]');if(!b||b.disabled)return;lmsg('');
+  const asSpec = (b.textContent||'').indexOf('ZUSCHAU')>=0;
+  ensureSid().then(()=>enter(b.dataset.code,false,asSpec)).catch(er=>lmsg((er&&er.message)||String(er)));
+});
 $('lbCodeIn').addEventListener('input',e=>{e.target.value=e.target.value.replace(/\D/g,'').slice(0,5)});
 
 async function ensureSid(){
@@ -2931,13 +2933,23 @@ async function ensureSid(){
   return LIVE.sid=fauth.currentUser.uid}
 const hostId=()=>{const m=LIVE.meta||{};return LIVE.lp.some(p=>p.id===m.host)?m.host:(LIVE.lp[0]&&LIVE.lp[0].id)};
 
-async function enter(code,create){
+async function enter(code,create,asSpec){
   const sid=await ensureSid(),base=fdb.ref('rooms2/'+code);
-  if(create)await base.child('meta').set({host:sid,state:'lobby',t:now(),winMode:LIVE.winMode||'time',dur:LIVE.dur||150,killLimit:LIVE.killLimit||10,botFill:LIVE.botFill|0,diff:LIVE.diff||'mid'});
-  else{const m=(await base.child('meta').get()).val();if(!m)throw new Error('Lobby nicht gefunden.');if(m.state==='playing'){if((m.dur||150)-(now()-(m.startAt||0))/1000<12)throw new Error('Das Match ist gleich vorbei.')}else if(m.state!=='lobby')throw new Error('Raum nicht beitretbar.');
-    if(Object.values((await base.child('pl').get()).val()||{}).filter(fresh).length>=10)throw new Error('Lobby ist voll.')}
+  LIVE.spectator=!!asSpec;
+  if(create){LIVE.spectator=false;await base.child('meta').set({host:sid,state:'lobby',t:now(),winMode:LIVE.winMode||'time',dur:LIVE.dur||150,killLimit:LIVE.killLimit||10,botFill:LIVE.botFill|0,diff:LIVE.diff||'mid'});}
+  else{
+    const m=(await base.child('meta').get()).val();
+    if(!m)throw new Error('Lobby nicht gefunden.');
+    if(m.state==='playing'){
+      LIVE.spectator=true; /* laufendes Match → Zuschauer */
+    }else if(m.state!=='lobby')throw new Error('Raum nicht beitretbar.');
+    else if(Object.values((await base.child('pl').get()).val()||{}).filter(fresh).length>=10)throw new Error('Lobby ist voll.');
+  }
   Object.assign(LIVE,{rid:code,base,me:base.child('pl/'+sid),starting:false,meta:null,lp:[],roster:{}});
-  LIVE.me.onDisconnect().remove();await LIVE.me.set(lobObj());
+  LIVE.me.onDisconnect().remove();
+  const lo=lobObj();
+  if(LIVE.spectator){lo.al=0;lo.g=0;lo.spec=1;lo.hp=0;}
+  await LIVE.me.set(lo);
   clearInterval(LIVE.hb);   /* nie zwei Lobby-Heartbeats gleichzeitig: ein übrig gebliebener überschrieb im Match die Position (0,0) */
   LIVE.hb=setInterval(()=>{if(LIVE.att||!LIVE.me)return;LIVE.me.set(lobObj()).catch(fail)},2000);
   const on=(ref,fn)=>{ref.on('value',fn,fail);LIVE.lobOff.push(()=>ref.off('value',fn))};
@@ -2957,7 +2969,7 @@ function renderLobby(){
   let botN = LIVE.botFill|0;
   if(n+botN>10) botN=Math.max(0,10-n);
   const wm = LIVE.winMode||'time';
-  const goal = wm==='kills' ? ((LIVE.killLimit||10)+' Kills') : (function(){
+  const goal = wm==='kills' ? ('+'+ (LIVE.killLimit||10) +' Kills') : (function(){
     const d=LIVE.dur||150; return d>=300?'5 Min':d>=150?'2:30':'1 Min';
   })();
   $('lbInfo').textContent=`${n} Spieler · ${botN} Bots · max 10 · Ziel: ${goal}`;
@@ -3049,7 +3061,7 @@ $('lbStart').addEventListener('click',async()=>{
 function beginMatch(){
   const m=LIVE.meta;if(LIVE.starting)return;
   const late=(!m.roster||!m.roster[LIVE.sid])&&now()>=m.startAt;   /* Beitritt in ein bereits laufendes Match */
-  if(late&&(m.dur||150)-(now()-m.startAt)/1000<8){leaveLobby('Das Match ist gleich vorbei.');return}
+  if(late&&!LIVE.spectator&&(m.dur||150)-(now()-m.startAt)/1000<8){leaveLobby('Das Match ist gleich vorbei.');return}
   LIVE.starting=true;LIVE.late=late;LIVE.roster=m.roster||{};LIVE.startAt=m.startAt;LIVE.dur=m.dur||150;LIVE.diff=m.diff||LIVE.diff||'mid';LIVE.winMode=m.winMode||LIVE.winMode||'time';LIVE.killLimit=m.killLimit||LIVE.killLimit||10;LIVE.botFill=(m.botFill!=null?m.botFill:LIVE.botFill)|0;
   LIVE.lobOff.forEach(f=>f());LIVE.lobOff=[];lobby.classList.remove('on');syncList();
   if(late){oc.setMap(oc.MAPS[m.map|0]);window.__mapGo=true;window.start();return}
@@ -3242,6 +3254,18 @@ function attach() {
     deaths: 0, hk: 0, dead: 0, q: [], sb: {}, R: {}, B: [],
     host: false, ready: false, gt: now(), hostSettle: 0, botHits: {}, phHits: {}
   });
+  if (LIVE.spectator) {
+    LIVE.dead = 1;
+    if (P) { P.alive = 0; P.hp = 0; }
+    setTimeout(() => {
+      try {
+        LIVE.spec = Object.values(LIVE.R || {}).find(r => r.alive) || (LIVE.B || []).find(r => r && r.alive) || null;
+        if (typeof buildSpecBar === 'function') buildSpecBar();
+        if (specBar) specBar.classList.add('on');
+        feed('👁 Zuschauer-Modus · Match verlassen über EXIT');
+      } catch (e) {}
+    }, 800);
+  }
   const sid = LIVE.sid, base = LIVE.base, R = LIVE.R, me = LIVE.me;
 
   const rnd = () => {
@@ -3807,14 +3831,31 @@ window.update = function (dt) {
 
   const rem = LIVE.host ? [] : LIVE.B;
   const list = players.concat(rem);
-  for (const r of list) smooth(r, dt);
+  for (const r of list) {
+    smooth(r, dt);
+    /* nie außerhalb der Arena (behebt „Bots fahren raus“ / Desync) */
+    if (r && typeof r.x === 'number') {
+      const rr = r.r || 20;
+      r.x = Math.max(rr, Math.min(A - rr, r.x));
+      r.y = Math.max(rr, Math.min(A - rr, r.y));
+    }
+  }
+  if (LIVE.host) {
+    for (const b of bots) {
+      if (!b) continue;
+      const rr = b.r || 20;
+      b.x = Math.max(rr, Math.min(A - rr, b.x));
+      b.y = Math.max(rr, Math.min(A - rr, b.y));
+    }
+  }
 
   /* Killcam / Spectator: Kamera folgt Ziel */
-  if ((!P.alive || LIVE.killcam > 0) && LIVE.spec) {
+  if ((!P.alive || LIVE.killcam > 0 || LIVE.spectator) && LIVE.spec) {
     if (LIVE.killcam > 0) LIVE.killcam -= dt;
     const s = LIVE.spec;
     if (s && s.x != null) {
-      const tx = s.x - W / 2, ty = s.y - H / 2;
+      const z = VIEW_Z || 1;
+      const tx = s.x - (W / 2) / z, ty = s.y - (H / 2) / z;
       cam.x += (tx - cam.x) * Math.min(1, 8 * dt);
       cam.y += (ty - cam.y) * Math.min(1, 8 * dt);
     }
@@ -3919,16 +3960,24 @@ window.update = function (dt) {
     }
   }
 
-  if (!P.alive && !LIVE.dead && !LIVE.exiting) liveDeath();
-  /* Siegbedingung Kills */
-  if (LIVE.att && !LIVE.exiting && LIVE.winMode === 'kills') {
-    const lim = LIVE.killLimit || 10;
-    let top = P && P.alive !== undefined ? (P.kills|0) : 0;
-    for (const r of Object.values(LIVE.R || {})) top = Math.max(top, r.kills|0);
+  if (LIVE.spectator) {
+    if (P) { P.alive = 0; P.hp = 0; P.vx = 0; P.vy = 0; }
+  } else if (!P.alive && !LIVE.dead && !LIVE.exiting) liveDeath();
+  /* Siegbedingung: Erster mit >= killLimit Kills gewinnt (sofort Ende) */
+  if (LIVE.att && !LIVE.exiting && (LIVE.winMode === 'kills' || (LIVE.meta && LIVE.meta.winMode === 'kills'))) {
+    const lim = Math.max(1, (LIVE.killLimit || (LIVE.meta && LIVE.meta.killLimit) || 10) | 0);
+    let top = (P && (P.kills|0)) || 0;
+    let leader = (P && P.name) || 'Du';
+    for (const r of Object.values(LIVE.R || {})) {
+      const k = (r.k|0) || (r.kills|0);
+      if (k > top) { top = k; leader = r.name || 'Pilot'; }
+    }
     if (top >= lim) {
       LIVE.exiting = true;
-      feed('🏁 Kill-Limit erreicht (' + lim + ')');
-      setTimeout(() => leave(), 600);
+      LIVE.winMode = 'kills';
+      feed('🏁 ' + leader + ' erreicht +' + lim + ' Kills – Match Ende');
+      msg('SIEG · +' + lim + ' KILLS<br><small style="font-size:13px">' + leader + '</small>', 2.2);
+      setTimeout(() => { try { leave(); } catch (e) {} }, 900);
     }
   }
 
@@ -3994,19 +4043,36 @@ function liveDeath() {
   msg('ELIMINIERT', 1.2);
   buildSpecBar();
   setTimeout(() => {
-    if (!LIVE.att) return;
+    if (!LIVE.att || LIVE.exiting) return;
     killcamTag.classList.remove('on');
     LIVE.killcam = 0;
-    /* nach Killcam: Respawn ODER weiter zuschauen bis man tippt – hier auto-respawn */
-    LIVE.spawn();
+    /* Reine Zuschauer bleiben tot und schauen weiter */
+    if (LIVE.spectator) {
+      LIVE.dead = 1;
+      if (P) { P.alive = 0; P.hp = 0; }
+      if (specBar) specBar.classList.add('on');
+      return;
+    }
+    /* Respawn – besonders wichtig bei Kill-Ziel (+5/+10/+20) */
+    try {
+      if (typeof LIVE.spawn === 'function') LIVE.spawn();
+      else {
+        P.x = 200 + Math.random() * (A - 400);
+        P.y = 200 + Math.random() * (A - 400);
+      }
+    } catch (e) {
+      P.x = A / 2; P.y = A / 2;
+    }
     P.hp = P.max;
     P.alive = 1;
-    P.sup = 0;
+    P.sup = Math.min(P.cost, P.sup || 0);
     P.inv = 2.5;
+    P.vx = 0; P.vy = 0;
     LIVE.dead = 0;
     LIVE.spec = null;
-    specBar.classList.remove('on');
-  }, 3000);
+    if (specBar) specBar.classList.remove('on');
+    feed('Respawn');
+  }, 2800);
 }
 function buildSpecBar() {
   const arrows = $('specArrows');
@@ -4040,7 +4106,19 @@ window.end = function (won) {
 };
 
 function leave() {
-  if (LIVE.exiting) return;
+  /* zweiter Klick erzwingt Exit auch wenn stuck */
+  if (LIVE.exiting && LIVE._leaveForce) {
+    try {
+      run = 0; document.body.classList.remove('playing');
+      document.getElementById('menu').classList.remove('hide');
+      document.getElementById('hud').classList.remove('show');
+      matchSum && matchSum.classList.remove('on');
+    } catch (e) {}
+    LIVE.exiting = false; LIVE.att = false; LIVE.rid = null;
+    return;
+  }
+  if (LIVE.exiting) { LIVE._leaveForce = 1; return; }
+  LIVE._leaveForce = 0;
   const pl = Object.values(LIVE.R);
   const n = pl.length + 1;
   const solo = n === 1;
