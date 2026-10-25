@@ -283,6 +283,16 @@ html,body{height:100%;min-height:0;overflow:hidden}
 
 
 
+
+#botStats{width:min(100%,420px);margin:8px auto 0;padding:12px 14px 14px;border-radius:16px;background:rgba(8,12,28,.75);border:1px solid rgba(148,171,220,.16);box-shadow:0 8px 28px rgba(0,0,0,.25)}
+#botStats .bs-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:8px}
+#botStats .bs-name{font-size:15px;font-weight:950;letter-spacing:.6px;color:#fff}
+#botStats .bs-role{font-size:10px;font-weight:800;color:#9aa8c5;letter-spacing:.8px;text-transform:uppercase}
+#botStats .bs-row{display:grid;grid-template-columns:92px 1fr 42px;gap:8px;align-items:center;margin:5px 0}
+#botStats .bs-lab{font-size:10px;font-weight:800;color:#9aa8c5;letter-spacing:.3px}
+#botStats .bs-track{height:10px;border-radius:999px;background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.08);overflow:hidden}
+#botStats .bs-fill{height:100%;width:0%;border-radius:999px;background:linear-gradient(90deg,color-mix(in srgb,var(--bs-c,#64f5d2) 70%,#fff),var(--bs-c,#64f5d2));box-shadow:0 0 12px color-mix(in srgb,var(--bs-c,#64f5d2) 55%,transparent);transition:width .25s ease}
+#botStats .bs-val{font-size:11px;font-weight:900;color:#e8eef8;text-align:right;font-variant-numeric:tabular-nums}
 #botStats .bs-super{margin-top:10px;padding-top:10px;border-top:1px solid rgba(148,171,220,.14)}
 #botStats .bs-super-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px}
 #botStats .bs-super-tag{font-size:9px;font-weight:900;letter-spacing:1.4px;color:#c084fc;text-transform:uppercase}
@@ -461,10 +471,10 @@ body.playing{overscroll-behavior:none;position:fixed;width:100%;height:100%}
     <div id="botStats" aria-live="polite">
       <div class="bs-head"><div class="bs-name" id="bsName">NYX</div><div class="bs-role" id="bsRole">Phantom</div></div>
       <div class="bs-row"><div class="bs-lab">Stärke</div><div class="bs-track"><div class="bs-fill" id="bsDmg"></div></div><div class="bs-val" id="bsDmgV">—</div></div>
-      <div class="bs-row"><div class="bs-lab">Leben</div><div class="bs-track"><div class="bs-fill" id="bsHp"></div></div><div class="bs-val" id="bsHpV">—</div></div>
       <div class="bs-row"><div class="bs-lab">Schuss-Tempo</div><div class="bs-track"><div class="bs-fill" id="bsBspd"></div></div><div class="bs-val" id="bsBspdV">—</div></div>
       <div class="bs-row"><div class="bs-lab">Feuerrate</div><div class="bs-track"><div class="bs-fill" id="bsRate"></div></div><div class="bs-val" id="bsRateV">—</div></div>
       <div class="bs-row"><div class="bs-lab">Geschwindigkeit</div><div class="bs-track"><div class="bs-fill" id="bsSpd"></div></div><div class="bs-val" id="bsSpdV">—</div></div>
+      <div class="bs-row"><div class="bs-lab">Leben</div><div class="bs-track"><div class="bs-fill" id="bsHp"></div></div><div class="bs-val" id="bsHpV">—</div></div>
       <div class="bs-super">
         <div class="bs-super-top">
           <span class="bs-super-tag">OVERCHARGE</span>
@@ -501,7 +511,7 @@ body.playing{overscroll-behavior:none;position:fixed;width:100%;height:100%}
 
   <div id="onlineModal" aria-hidden="true">
     <section class="online-panel" role="dialog" aria-modal="true" aria-label="Online Lobby">
-      <div class="online-head"><div><div class="online-title">OVERCHARGE ONLINE</div><div class="online-muted">Profil · Matchmaking · Rangliste</div></div><button id="onlineClose" aria-label="Schließen">×</button></div>
+      <div class="online-head"><div><div class="online-title">OVERCHARGE ONLINE</div><div class="online-muted">Profil · Abzeichen · Anmeldung</div></div><button id="onlineClose" aria-label="Schließen">×</button></div>
       <section class="online-section">
         <h3>Dein Account</h3>
         <div id="authSignedOut">
@@ -512,6 +522,10 @@ body.playing{overscroll-behavior:none;position:fixed;width:100%;height:100%}
         </div>
         <div id="authSignedIn" class="hidden"><div><div class="account-name" id="accountName">Angemeldet</div><div class="account-detail" id="accountDetail">Profil wird geladen …</div></div><button class="online-action danger" id="logoutBtn">ABMELDEN</button></div>
         <div id="authStatus" class="online-status" aria-live="polite"></div>
+        <div id="accountAchWrap" style="margin-top:12px">
+          <div class="profile-ach-title" style="margin-top:4px">Deine Abzeichen</div>
+          <div id="accountAch"></div>
+        </div>
       </section>
       <section class="online-section" id="soundSettings" style="display:none">
         <h3><svg class="ui-icon" viewBox="0 0 24 24" style="vertical-align:middle;margin-right:5px"><path d="M11 5 6 9H3v6h3l5 4V5Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7m3-10a9 9 0 0 1 0 13"/></svg>Sound-Optionen</h3>
@@ -1144,7 +1158,12 @@ function start() {
   P = { x: A / 2, y: A / 2, vx: 0, vy: 0, angle: 0, hp: b.hp, max: b.hp, r: 22, spd: b.spd, baseSpd: b.spd, rate: b.rate, bSpd: b.bSpd, dmg: b.dmg, bR: b.bR, fCd: 0, dT: 0, dCd: 0, inv: 0, sup: 0, cost: b.cost, dMax: b.dash, gCd: 0, gMax: b.gCd, kills: 0, alive: 1, col: b.color, name: nick, trail: [], br: b, modelId: b.id };
   bullets = []; parts = []; powers = []; streak = 0; streakT = 0;
   fx = makeFX(); pLk = 0; pRec = 0;
-  cam = { x: 0, y: 0, sh: 0 }; time = 180; over = 0; hitstop = 0; last = performance.now(); run = 1;
+  cam = { x: 0, y: 0, sh: 0 };
+  try {
+    if (typeof LIVE !== 'undefined' && LIVE.rid && LIVE.dur) time = LIVE.dur;
+    else time = 180;
+  } catch (e) { time = 180; }
+  over = 0; hitstop = 0; last = performance.now(); run = 1;
   obs = [{ x: 140, y: 140, w: 130, h: 130 }, { x: 1480, y: 140, w: 130, h: 130 }, { x: 140, y: 1480, w: 130, h: 130 }, { x: 1480, y: 1480, w: 130, h: 130 }, { x: 740, y: 90, w: 270, h: 42 }, { x: 740, y: 1618, w: 270, h: 42 }, { x: 90, y: 740, w: 42, h: 270 }, { x: 1618, y: 740, w: 42, h: 270 }, { x: 420, y: 420, w: 110, h: 110 }, { x: 1220, y: 420, w: 110, h: 110 }, { x: 420, y: 1220, w: 110, h: 110 }, { x: 1220, y: 1220, w: 110, h: 110 }, { x: 770, y: 770, w: 210, h: 210 }, { x: 240, y: 760, w: 48, h: 230 }, { x: 1462, y: 760, w: 48, h: 230 }, { x: 760, y: 240, w: 230, h: 48 }, { x: 760, y: 1462, w: 230, h: 48 }, { x: 500, y: 900, w: 80, h: 80 }, { x: 1170, y: 760, w: 80, h: 80 }, { x: 900, y: 500, w: 80, h: 80 }];
   spawnBots();
   msg(`<span style="color:${b.color}">${nick}</span><br><small style="font-size:14px;opacity:.7">${b.name}</small>`, 1.35);
@@ -1162,7 +1181,17 @@ function spawnBots() {
     assassin: { hp: 58,  spd: 340, r: 17, modelPool: ['nyx', 'volt', 'viper'] }
   };
   const types = ['rusher', 'shooter', 'tank', 'assassin'];
-  for (let i = 0; i < 10; i++) {
+  let botCount = 10;
+  try {
+    if (typeof LIVE !== 'undefined' && LIVE.rid) {
+      const humans = Math.max(1, (LIVE.lp && LIVE.lp.length) || Object.keys(LIVE.roster || {}).length || 1);
+      let fill = (LIVE.meta && LIVE.meta.botFill != null) ? (LIVE.meta.botFill|0) : (LIVE.botFill|0);
+      if (fill < 0) fill = 0;
+      botCount = Math.min(10 - humans, fill);
+      if (botCount < 0) botCount = 0;
+    }
+  } catch (e) {}
+  for (let i = 0; i < botCount; i++) {
     let x, y; do { x = 170 + Math.random() * (A - 340); y = 170 + Math.random() * (A - 340); } while (Math.hypot(x - P.x, y - P.y) < 450);
     const t = types[i % 4];
     const a = ARCH[t];
@@ -1927,7 +1956,7 @@ function loop(now) {
     sfxToggle.addEventListener('change',()=>{soundPrefs.enabled=sfxToggle.checked;saveSoundPrefs();if(soundPrefs.enabled){aud();beep(660,.06,'sine',.04,180);}});
   }
   $('onlineOpen').addEventListener('click',()=>openOnline(false));
-  $('settingsOpen').addEventListener('click',e=>{e.preventDefault();try{if(window.__syncSoundIntoSettings)window.__syncSoundIntoSettings();const g=$('gearBtn');if(g)g.click();setTimeout(()=>{const b=document.querySelector('#settingsSheet .side button[data-tab="audio"]');if(b)b.click()},40)}catch(err){}});
+  $('settingsOpen').addEventListener('click',e=>{e.preventDefault();try{if(window.__syncSoundIntoSettings)window.__syncSoundIntoSettings();if(typeof window.openSettings==='function')window.openSettings();else{const s=$('settingsSheet');if(s)s.classList.add('on')}}catch(err){}});
   $('leaderboardOpen').addEventListener('click',e=>{e.preventDefault();if(window.__openRankRail)window.__openRankRail();});
   $('onlineClose').addEventListener('click',closeOnline);
   $('onlineModal').addEventListener('click',e=>{if(e.target===$('onlineModal'))closeOnline();});
@@ -2071,7 +2100,7 @@ const lobH=[...document.querySelectorAll('.online-section h3')].find(h=>h.textCo
 let lobPod=null;if(lobH){lobPod=document.createElement('div');lobPod.className='podium-host';lobH.after(lobPod);}
 const oldList=$('leaderboardList'),oldSec=oldList&&oldList.closest('.online-section');
 const sec=document.createElement('section');sec.className='online-section';
-sec.innerHTML='<h3>Top Piloten · Live <span id="onlineCnt" style="float:right;color:#9aa8c5;letter-spacing:0"></span></h3><div class="podium-host"></div><div id="rtRows"></div><div class="online-muted" style="margin-top:8px">RP nur mit Account. Stufen: Bronze 3–1 → Silber 3–1 → Gold 3–1 → Diamant 3–1 → Adamantium 3–1. RP aus Kills; Minus nur wenn Tode > Kills. Overcharge-Level steigt mit dem Rang (Lv.1–5).</div>';
+sec.style.display='none';sec.innerHTML='<h3>Top Piloten · Live <span id="onlineCnt" style="float:right;color:#9aa8c5;letter-spacing:0"></span></h3><div class="podium-host"></div><div id="rtRows"></div><div class="online-muted" style="margin-top:8px">RP nur mit Account. Stufen: Bronze 3–1 → Silber 3–1 → Gold 3–1 → Diamant 3–1 → Adamantium 3–1. RP aus Kills; Minus nur wenn Tode > Kills. Overcharge-Level steigt mit dem Rang (Lv.1–5).</div>';
 if(oldSec){oldSec.before(sec);oldSec.style.display='none';}
 $('leaderboardOpen').addEventListener('click',e=>{e.preventDefault();if(window.__openRankRail)window.__openRankRail();});
 const root=$('root');
@@ -2120,7 +2149,7 @@ function renderBoard(){
   if($('rankRailRows'))$('rankRailRows').innerHTML=htmlOut;
   try{bindRankClicks($('rtRows'));bindRankClicks($('rankRailRows'));}catch(e){}
 }
-function renderRank(){
+function renderRank(){ try{refreshAccountAch()}catch(e){}
   const rk=ranked(),r=rk?rankInfo(RP):{col:'#6f7d9c',ico:'🔒',name:'UNGERANKT',pts:0,pct:0,sub:'Melde dich an, um zu ranken'};card.style.setProperty('--rc',r.col);
   $('rbBadge').textContent=r.ico;
   const rb=$('rbName');
@@ -2225,6 +2254,17 @@ async function applyRP(won,info){
   if(window.rankAnim)window.rankAnim(prev,next,detail);
 }
 
+
+function refreshAccountAch(){
+  const el=$('accountAch');
+  if(!el)return;
+  const bag=(user&&!user.isAnonymous)?(function(){
+    const fromBoard=board.find(p=>p.uid===user.uid);
+    if(fromBoard&&fromBoard.ach)return fromBoard.ach;
+    return loadLocalAch();
+  })():loadLocalAch();
+  el.innerHTML=typeof achListHTML==='function'?achListHTML(bag):'';
+}
 /* ===== ACHIEVEMENTS + PROFIL ===== */
 const ACHIEVEMENTS = [
   {id:'first_blood', ico:'🩸', name:'First Blood', desc:'Erziele deinen ersten Kill'},
@@ -2238,7 +2278,11 @@ const ACHIEVEMENTS = [
   {id:'pvp_ace', ico:'🎯', name:'Ace Pilot', desc:'Mind. 3 Spieler-Kills (Live)'},
   {id:'comeback', ico:'↩️', name:'Comeback', desc:'Gewinne trotz mind. 3 Todesfällen'},
   {id:'matches10', ico:'🎮', name:'Stammgast', desc:'10 Matches gespielt'},
-  {id:'silver_up', ico:'🥈', name:'Silber-Aufstieg', desc:'Erreiche den Rang Silber'},
+  {id:'rank_bronze', ico:'🥉', name:'Bronze-Pilot', desc:'Erreiche Bronze (Rang startet hier)'},
+  {id:'rank_silver', ico:'🥈', name:'Silber-Aufstieg', desc:'Erreiche den Rang Silber'},
+  {id:'rank_gold', ico:'🥇', name:'Gold-Status', desc:'Erreiche den Rang Gold'},
+  {id:'rank_diamond', ico:'💠', name:'Diamant', desc:'Erreiche den Rang Diamant'},
+  {id:'rank_adamantium', ico:'🛡️', name:'Adamantium', desc:'Erreiche den Rang Adamantium'},
 ];
 function loadLocalAch(){try{return JSON.parse(localStorage.getItem('overcharge_ach_v1')||'{}')}catch(e){return{}}}
 function saveLocalAch(a){try{localStorage.setItem('overcharge_ach_v1',JSON.stringify(a||{}))}catch(e){}}
@@ -2268,7 +2312,15 @@ function evaluateAchievements(info,delta,bag){
   check('comeback',won&&deaths>=3);
   bag._matches=(bag._matches|0)+1;saveLocalAch(bag);
   check('matches10',(bag._matches|0)>=10);
-  try{const r=rankInfo(typeof RP==='number'?RP:0);check('silver_up',(r.tier|0)>=1)}catch(e){}
+  try{
+    const r=rankInfo(typeof RP==='number'?RP:0);
+    const t=r.tier|0;
+    check('rank_bronze', t>=0 && (typeof RP==='number'?RP:0)>=0);
+    check('rank_silver', t>=1);
+    check('rank_gold', t>=2);
+    check('rank_diamond', t>=3);
+    check('rank_adamantium', t>=4);
+  }catch(e){}
   if(newly.length)showAchToast(newly);
   return bag;
 }
@@ -2487,7 +2539,7 @@ const st=document.createElement('style');st.textContent=`
   #rankRail{width:min(100vw,100%);max-width:100%}
 }
 
-#gearBtn{position:absolute;top:max(10px,env(safe-area-inset-top));right:10px;z-index:45;width:44px;height:44px;border-radius:14px;border:1px solid rgba(255,255,255,.14);background:rgba(8,10,24,.88);color:#9aa8c5;display:flex;align-items:center;justify-content:center;pointer-events:auto;touch-action:manipulation;backdrop-filter:blur(12px);box-shadow:0 6px 20px rgba(0,0,0,.35);padding:0}
+#gearBtn{display:none!important}
 #gearBtn svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 #gearBtn:active{transform:scale(.94)}
 #gearBtn.hide{display:none!important}
@@ -2618,7 +2670,7 @@ window.rankAnim=function(from,to,detail){$('rkDetail').textContent=detail||'';
 
 /* ---------- ONLINE LOBBY + SYNCHRONER MATCH-START ---------- */
 const LIVE={rid:null,sid:null,base:null,me:null,att:false,R:{},B:[],host:false,ready:false,dead:0,deaths:0,hk:0,exiting:false,iv:null,bv:null,hb:null,lobOff:[],off:[],q:[],seq:0,dq:0,sb:{},roster:{},rcount:1,startAt:0,dur:150,starting:false,meta:null,lp:[]};
-LIVE.diff='mid';LIVE.ping=0;LIVE.spec=null;LIVE.killcam=0;LIVE.colors={};LIVE.emoteCd=0;LIVE.ff=true;LIVE.emotesOn=true;
+LIVE.diff='mid';LIVE.winMode='time';LIVE.dur=150;LIVE.killLimit=10;LIVE.botFill=4;LIVE.ping=0;LIVE.spec=null;LIVE.killcam=0;LIVE.colors={};LIVE.emoteCd=0;LIVE.ff=true;LIVE.emotesOn=true;
 const ADMIN_EMAIL='ytprofessorfilou@gmail.com';
 function isAdmin(){
   try{
@@ -2644,6 +2696,14 @@ const st2=document.createElement('style');st2.textContent=`
 .lbs{display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:12px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.035);font-size:11px;font-weight:800;text-align:left;min-width:0}
 .lbs svg{width:30px;height:30px;flex:0 0 30px}.lbs span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.lbs small{display:block;font-size:8px;color:#8a97b4;letter-spacing:.6px}
 .lbs.bot{opacity:.42}.lbs.me{border-color:#64f5d2;background:rgba(100,245,210,.07)}
+#lbWinMode,#lbTimeOpts,#lbKillOpts,#lbBots,#lbDiff{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+#lbWinMode button,#lbTimeOpts button,#lbKillOpts button,#lbBots button,#lbDiff button{
+  flex:1 1 auto;min-width:64px;padding:10px 8px;border-radius:12px;border:1px solid rgba(255,255,255,.12);
+  background:rgba(255,255,255,.05);color:#c8d2e8;font-weight:900;font-size:11px;letter-spacing:.4px;touch-action:manipulation
+}
+#lbWinMode button.on,#lbTimeOpts button.on,#lbKillOpts button.on,#lbBots button.on,#lbDiff button.on{
+  background:rgba(0,255,210,.14);border-color:rgba(0,255,210,.4);color:#64f5d2
+}
 #lbStart{width:100%;height:56px;margin-top:4px;border:0;border-radius:16px;font-size:20px;font-weight:950;letter-spacing:2px;color:#fff;cursor:pointer;background:linear-gradient(180deg,#5cff6a,#00a844);box-shadow:0 5px 0 #007a30;touch-action:manipulation}
 #lbStart:disabled{opacity:.5}#lbWait{font-size:12px;color:#9aa8c5;padding:14px 0}
 .rm{display:flex;align-items:center;gap:8px;padding:9px 10px;margin:6px 0;border:1px solid rgba(255,255,255,.1);border-radius:12px;background:rgba(255,255,255,.035);text-align:left}
@@ -2659,7 +2719,30 @@ lobby.innerHTML=`<div class="lbw"><h2>ONLINE LOBBY</h2>
 <div class="online-muted" style="margin:18px 0 4px;letter-spacing:2px;font-size:10px">OFFENE RÄUME · LIVE</div><div id="lbList"><div class="online-muted" style="padding:10px">Suche Räume …</div></div></div>
 <div id="lbRoom" class="hidden"><div class="online-muted">RAUMCODE</div><div id="lbCode">-----</div><div id="lbInfo" class="online-muted" style="margin-top:6px"></div>
 <div class="lbgrid" id="lbGrid"></div>
-<div class="online-muted" style="margin-top:8px;font-size:10px;letter-spacing:1px">KI-SCHWIERIGKEIT (NUR HOST)</div>
+<div class="online-muted" style="margin-top:10px;font-size:10px;letter-spacing:1px">SIEGBEDINGUNG (NUR HOST)</div>
+<div id="lbWinMode" class="lbseg">
+  <button type="button" data-wm="time" class="on">⏱ ZEIT</button>
+  <button type="button" data-wm="kills">⚔ KILLS</button>
+</div>
+<div id="lbTimeOpts" class="lbseg" style="margin-top:6px">
+  <button type="button" data-dur="60">1 MIN</button>
+  <button type="button" data-dur="150" class="on">2:30</button>
+  <button type="button" data-dur="300">5 MIN</button>
+</div>
+<div id="lbKillOpts" class="lbseg" style="margin-top:6px;display:none">
+  <button type="button" data-kills="5">5 KILLS</button>
+  <button type="button" data-kills="10" class="on">10 KILLS</button>
+  <button type="button" data-kills="20">20 KILLS</button>
+</div>
+<div class="online-muted" style="margin-top:10px;font-size:10px;letter-spacing:1px">BOTS AUFFÜLLEN (MAX. 10 SPIELER GESAMT)</div>
+<div id="lbBots" class="lbseg">
+  <button type="button" data-bots="0">0</button>
+  <button type="button" data-bots="2">2</button>
+  <button type="button" data-bots="4" class="on">4</button>
+  <button type="button" data-bots="6">6</button>
+  <button type="button" data-bots="8">8</button>
+</div>
+<div class="online-muted" style="margin-top:10px;font-size:10px;letter-spacing:1px">KI-SCHWIERIGKEIT (NUR HOST)</div>
 <div id="lbDiff"><button data-d="easy" class="on">LEICHT</button><button data-d="mid">MITTEL</button><button data-d="hard">SCHWER</button></div>
 <button id="lbStart">▶ MATCH STARTEN</button><div id="lbWait" class="hidden">Warte auf den Host …</div>
 <div class="online-actions"><button class="online-action secondary" id="lbCopy">CODE KOPIEREN</button><button class="online-action danger" id="lbLeave">VERLASSEN</button></div></div>
@@ -2790,7 +2873,7 @@ const hostId=()=>{const m=LIVE.meta||{};return LIVE.lp.some(p=>p.id===m.host)?m.
 
 async function enter(code,create){
   const sid=await ensureSid(),base=fdb.ref('rooms2/'+code);
-  if(create)await base.child('meta').set({host:sid,state:'lobby',t:now()});
+  if(create)await base.child('meta').set({host:sid,state:'lobby',t:now(),winMode:LIVE.winMode||'time',dur:LIVE.dur||150,killLimit:LIVE.killLimit||10,botFill:LIVE.botFill|0,diff:LIVE.diff||'mid'});
   else{const m=(await base.child('meta').get()).val();if(!m)throw new Error('Lobby nicht gefunden.');if(m.state==='playing'){if((m.dur||150)-(now()-(m.startAt||0))/1000<12)throw new Error('Das Match ist gleich vorbei.')}else if(m.state!=='lobby')throw new Error('Raum nicht beitretbar.');
     if(Object.values((await base.child('pl').get()).val()||{}).filter(fresh).length>=10)throw new Error('Lobby ist voll.')}
   Object.assign(LIVE,{rid:code,base,me:base.child('pl/'+sid),starting:false,meta:null,lp:[],roster:{}});
@@ -2805,10 +2888,34 @@ async function enter(code,create){
 function renderLobby(){
   if(!LIVE.rid||LIVE.att)return;
   $('lbCode').textContent=LIVE.rid;const n=LIVE.lp.length,h=hostId(),isH=h===LIVE.sid;
-  $('lbInfo').textContent=`${n}/10 Spieler · ${10-n} Bots füllen auf`;
+  const m=LIVE.meta||{};
+  if(m.winMode) LIVE.winMode=m.winMode;
+  if(m.dur) LIVE.dur=m.dur|0;
+  if(m.killLimit) LIVE.killLimit=m.killLimit|0;
+  if(m.botFill!=null) LIVE.botFill=m.botFill|0;
+  if(m.diff) LIVE.diff=m.diff;
+  let botN = LIVE.botFill|0;
+  if(n+botN>10) botN=Math.max(0,10-n);
+  const wm = LIVE.winMode||'time';
+  const goal = wm==='kills' ? ((LIVE.killLimit||10)+' Kills') : (function(){
+    const d=LIVE.dur||150; return d>=300?'5 Min':d>=150?'2:30':'1 Min';
+  })();
+  $('lbInfo').textContent=`${n} Spieler · ${botN} Bots · max 10 · Ziel: ${goal}`;
   $('lbGrid').innerHTML=LIVE.lp.map(p=>`<div class="lbs${p.id===LIVE.sid?' me':''}">${MODELS[p.mo]?modelSVG(MODELS[p.mo]):''}<span>${String(p.n||'Pilot').replace(/</g,'')}<small>${p.id===h?'👑 HOST':p.id===LIVE.sid?'DU':'SPIELER'}</small></span></div>`).join('')
-   +Array.from({length:10-n},(_,i)=>`<div class="lbs bot"><span>Bot ${i+1}<small>KI</small></span></div>`).join('');
+   +Array.from({length:botN},(_,i)=>`<div class="lbs bot"><span>Bot ${i+1}<small>KI</small></span></div>`).join('');
   $('lbStart').classList.toggle('hidden',!isH);$('lbWait').classList.toggle('hidden',isH);
+  /* UI sync for host controls */
+  try{
+    const on=(id,sel,attr,val)=>{const root=$(id);if(!root)return;root.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.getAttribute(attr)===String(val)))};
+    on('lbWinMode','button','data-wm',wm);
+    on('lbTimeOpts','button','data-dur',LIVE.dur||150);
+    on('lbKillOpts','button','data-kills',LIVE.killLimit||10);
+    on('lbBots','button','data-bots',LIVE.botFill|0);
+    on('lbDiff','button','data-d',LIVE.diff||'mid');
+    if($('lbTimeOpts'))$('lbTimeOpts').style.display=wm==='time'?'flex':'none';
+    if($('lbKillOpts'))$('lbKillOpts').style.display=wm==='kills'?'flex':'none';
+    ['lbWinMode','lbTimeOpts','lbKillOpts','lbBots','lbDiff'].forEach(id=>{const el=$(id);if(el)el.style.pointerEvents=isH?'auto':'none';el&&(el.style.opacity=isH?'1':'.55')});
+  }catch(e){}
 }
 /* Quick Match: immer die Lobby mit den meisten Spielern (noch nicht voll) */
 $('lbQuick').addEventListener('click',async()=>{try{lmsg('Suche die vollste Lobby …');await ensureSid();const rooms=(await fdb.ref('rooms2').limitToLast(60).get()).val()||{};
@@ -2832,16 +2939,58 @@ async function leaveLobby(m){
   showView(false);lmsg(m||'');
 }
 $('lbDiff').addEventListener('click',e=>{const b=e.target.closest('[data-d]');if(!b||hostId()!==LIVE.sid)return;LIVE.diff=b.dataset.d;$('lbDiff').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));if(LIVE.base)LIVE.base.child('meta/diff').set(LIVE.diff).catch(()=>{})});
+$('lbWinMode').addEventListener('click',e=>{
+  const b=e.target.closest('[data-wm]');if(!b||hostId()!==LIVE.sid)return;
+  LIVE.winMode=b.dataset.wm;
+  $('lbWinMode').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));
+  $('lbTimeOpts').style.display=LIVE.winMode==='time'?'flex':'none';
+  $('lbKillOpts').style.display=LIVE.winMode==='kills'?'flex':'none';
+  if(LIVE.base)LIVE.base.child('meta').update({winMode:LIVE.winMode}).catch(()=>{});
+});
+$('lbTimeOpts').addEventListener('click',e=>{
+  const b=e.target.closest('[data-dur]');if(!b||hostId()!==LIVE.sid)return;
+  LIVE.dur=+b.dataset.dur;LIVE.winMode='time';
+  $('lbTimeOpts').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));
+  if(LIVE.base)LIVE.base.child('meta').update({dur:LIVE.dur,winMode:'time'}).catch(()=>{});
+});
+$('lbKillOpts').addEventListener('click',e=>{
+  const b=e.target.closest('[data-kills]');if(!b||hostId()!==LIVE.sid)return;
+  LIVE.killLimit=+b.dataset.kills;LIVE.winMode='kills';
+  $('lbKillOpts').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));
+  if(LIVE.base)LIVE.base.child('meta').update({killLimit:LIVE.killLimit,winMode:'kills'}).catch(()=>{});
+});
+$('lbBots').addEventListener('click',e=>{
+  const b=e.target.closest('[data-bots]');if(!b||hostId()!==LIVE.sid)return;
+  LIVE.botFill=+b.dataset.bots;
+  $('lbBots').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));
+  if(LIVE.base)LIVE.base.child('meta').update({botFill:LIVE.botFill}).catch(()=>{});
+});
+
 $('lbStart').addEventListener('click',async()=>{
   if(hostId()!==LIVE.sid)return;const roster={};LIVE.lp.forEach(p=>roster[p.id]=1);$('lbStart').disabled=true;
-  try{await LIVE.base.child('meta').update({state:'playing',map:Math.floor(Math.random()*oc.MAPS.length),startAt:now()+7500,roster,dur:150,diff:LIVE.diff||'mid'})}catch(e){fail(e)}
+  try{
+    const humans=roster.length;
+    let bots=Math.max(0, LIVE.botFill|0);
+    if(humans+bots>10) bots=Math.max(0,10-humans);
+    await LIVE.base.child('meta').update({
+      state:'playing',
+      map:Math.floor(Math.random()*oc.MAPS.length),
+      startAt:now()+7500,
+      roster,
+      dur: LIVE.winMode==='time' ? (LIVE.dur||150) : 900,
+      diff:LIVE.diff||'mid',
+      winMode: LIVE.winMode||'time',
+      killLimit: LIVE.killLimit||10,
+      botFill: bots
+    });
+  }catch(e){fail(e)}
   setTimeout(()=>{$('lbStart').disabled=false},3000);
 });
 function beginMatch(){
   const m=LIVE.meta;if(LIVE.starting)return;
   const late=(!m.roster||!m.roster[LIVE.sid])&&now()>=m.startAt;   /* Beitritt in ein bereits laufendes Match */
   if(late&&(m.dur||150)-(now()-m.startAt)/1000<8){leaveLobby('Das Match ist gleich vorbei.');return}
-  LIVE.starting=true;LIVE.late=late;LIVE.roster=m.roster||{};LIVE.startAt=m.startAt;LIVE.dur=m.dur||150;LIVE.diff=m.diff||LIVE.diff||'mid';
+  LIVE.starting=true;LIVE.late=late;LIVE.roster=m.roster||{};LIVE.startAt=m.startAt;LIVE.dur=m.dur||150;LIVE.diff=m.diff||LIVE.diff||'mid';LIVE.winMode=m.winMode||LIVE.winMode||'time';LIVE.killLimit=m.killLimit||LIVE.killLimit||10;LIVE.botFill=(m.botFill!=null?m.botFill:LIVE.botFill)|0;
   LIVE.lobOff.forEach(f=>f());LIVE.lobOff=[];lobby.classList.remove('on');syncList();
   if(late){oc.setMap(oc.MAPS[m.map|0]);window.__mapGo=true;window.start();return}
   oc.spin(map=>{oc.setMap(map);const iv=setInterval(()=>{const rem=LIVE.startAt-now();
@@ -3372,7 +3521,7 @@ function attach() {
   ex.style.display = 'block';
   if (typeof S === 'undefined' || (window.__ocSettings && window.__ocSettings.showPing !== false) || (typeof S !== 'undefined' && S.showPing !== false)) netPing.classList.add('show');
   chatBtn.classList.add('on');
-  if (typeof gearBtn !== 'undefined') gearBtn.classList.add('hide');
+  
   if (specCount) { specCount.classList.add('on'); }
 
   LIVE.ping = 0;
@@ -3706,6 +3855,18 @@ window.update = function (dt) {
   }
 
   if (!P.alive && !LIVE.dead && !LIVE.exiting) liveDeath();
+  /* Siegbedingung Kills */
+  if (LIVE.att && !LIVE.exiting && LIVE.winMode === 'kills') {
+    const lim = LIVE.killLimit || 10;
+    let top = P && P.alive !== undefined ? (P.kills|0) : 0;
+    for (const r of Object.values(LIVE.R || {})) top = Math.max(top, r.kills|0);
+    if (top >= lim) {
+      LIVE.exiting = true;
+      feed('🏁 Kill-Limit erreicht (' + lim + ')');
+      setTimeout(() => leave(), 600);
+    }
+  }
+
 
   if ((board += dt) > 0.5) {
     board = 0;
@@ -3884,7 +4045,7 @@ function leave() {
   killcamTag.classList.remove('on');
   if (hpVig) hpVig.classList.remove('on');
   if (chatFeed) chatFeed.innerHTML = '';
-  if (typeof gearBtn !== 'undefined') gearBtn.classList.remove('hide');
+  
   if (specCount) specCount.classList.remove('on');
 
   window.__rpDone = false;
@@ -3999,7 +4160,7 @@ window.draw = function () {
 (function(){
 const gearBtn=document.createElement('button');gearBtn.id='gearBtn';gearBtn.type='button';gearBtn.title='Einstellungen';
 gearBtn.innerHTML='<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg>';
-document.body.appendChild(gearBtn);
+/* gearBtn disabled – Settings nur über Menü-Pill */
 const settingsSheet=document.createElement('div');settingsSheet.id='settingsSheet';
 settingsSheet.innerHTML=`<div class="panel">
   <div class="side">
@@ -4112,7 +4273,8 @@ function applySettingsUI(){
 function openSettings(){applySettingsUI();settingsSheet.classList.add('on')}
 function closeSettings(){settingsSheet.classList.remove('on');saveSettings()}
 window.openSettings=openSettings;window.closeSettings=closeSettings;
-gearBtn.addEventListener('click',openSettings);
+if(gearBtn)gearBtn.addEventListener('click',openSettings);
+  const so=document.getElementById('settingsOpen');if(so)so.addEventListener('click',function(ev){ev.preventDefault();openSettings();});
 document.getElementById('setClose').addEventListener('click',closeSettings);
 settingsSheet.addEventListener('click',e=>{if(e.target===settingsSheet)closeSettings()});
 settingsSheet.querySelector('.side').addEventListener('click',e=>{
