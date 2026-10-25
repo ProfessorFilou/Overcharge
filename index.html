@@ -258,7 +258,8 @@ html,body{height:100%;min-height:0;overflow:hidden}
   padding-top:max(12px,env(safe-area-inset-top));
   padding-bottom:max(12px,env(safe-area-inset-bottom));
 }
-#onlineModal *{touch-action:pan-y}
+#onlineModal,#onlineModal *{touch-action:pan-y pan-x!important}
+#onlineModal button{touch-action:manipulation!important}
 #onlineModal button{touch-action:manipulation}
 #onlineModal input,#onlineModal textarea{touch-action:auto;-webkit-user-select:text;user-select:text}
 .online-panel{
@@ -309,7 +310,7 @@ html,body{height:100%;min-height:0;overflow:hidden}
 @keyframes rnPulse{0%,100%{filter:drop-shadow(0 0 8px rgba(100,245,210,.4))}50%{filter:drop-shadow(0 0 16px rgba(100,245,210,.75))}}
 
 /* Rangliste: eine Zeile, klare Spalten + Kopfzeile */
-.rank-table{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;margin-top:6px}
+.rank-table{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y!important;margin-top:6px}
 .rank-table-inner{min-width:320px;width:100%}
 .rank-head,.rank-row.rank-line{
   display:grid;
@@ -1011,9 +1012,20 @@ addEventListener('orientationchange', () => setTimeout(resize, 120));
 resize();
 /* Block page scroll / pull-to-refresh while in match */
 document.addEventListener('touchmove', e => {
-  if (!document.body.classList.contains('playing')) return;
   const t = e.target;
-  if (t && (t.closest && (t.closest('#menu') || t.closest('#onlineModal') || t.closest('#settingsSheet') || t.closest('#lobby') || t.closest('input') || t.closest('textarea')))) return;
+  /* Overlays always scrollable (Settings, Rangliste, Lobby, Online) */
+  if (t && t.closest && (
+    t.closest('#settingsSheet') ||
+    t.closest('#rankRail') ||
+    t.closest('#rankScrim') ||
+    t.closest('#onlineModal') ||
+    t.closest('#lobby') ||
+    t.closest('#menu') ||
+    t.closest('#adminPanel') ||
+    t.closest('#matchSum') ||
+    t.closest('input') || t.closest('textarea')
+  )) return;
+  if (!document.body.classList.contains('playing')) return;
   e.preventDefault();
 }, { passive: false });
 
@@ -2334,17 +2346,23 @@ const st=document.createElement('style');st.textContent=`
 #adminPanel button{width:100%;margin:4px 0;padding:10px;border-radius:11px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:#fff;font-weight:800;font-size:12px;touch-action:manipulation}
 
 
-#rankRail{position:fixed;top:0;right:0;bottom:0;z-index:92;width:min(340px,92vw);transform:translateX(105%);transition:transform .28s cubic-bezier(.2,.8,.2,1);background:linear-gradient(180deg,#10162a,#070b16);border-left:1px solid rgba(0,255,210,.2);box-shadow:-20px 0 60px rgba(0,0,0,.45);display:flex;flex-direction:column;pointer-events:auto}
+#rankRail{position:fixed;top:0;right:0;bottom:0;z-index:92;width:min(420px,100vw);transform:translateX(105%);transition:transform .28s cubic-bezier(.2,.8,.2,1);background:linear-gradient(180deg,#10162a,#070b16);border-left:1px solid rgba(0,255,210,.2);box-shadow:-20px 0 60px rgba(0,0,0,.45);display:flex;flex-direction:column;pointer-events:auto}
 #rankRail.on{transform:translateX(0)}
 #rankRail .rh{display:flex;align-items:center;justify-content:space-between;padding:14px 14px 10px;border-bottom:1px solid rgba(255,255,255,.07)}
 #rankRail .rh h3{font-size:14px;font-weight:950;letter-spacing:1.5px;color:#fff;display:flex;align-items:center;gap:8px;margin:0}
 #rankRail .rh h3 svg{width:18px;height:18px;stroke:#64f5d2;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 #rankRail .rh button{width:36px;height:36px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:#fff;display:flex;align-items:center;justify-content:center;touch-action:manipulation;padding:0}
 #rankRail .rh button svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2}
-#rankRail .rb{flex:1;overflow:auto;padding:10px 12px 20px;overscroll-behavior:contain}
+#rankRail,#rankRail *{touch-action:pan-y pan-x!important}
+#rankRail button{touch-action:manipulation!important}
+#rankRail .rb{flex:1;min-height:0;overflow-x:auto;overflow-y:auto;padding:10px 12px max(20px,env(safe-area-inset-bottom));-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-y pan-x!important}
 #rankRail .rmeta{font-size:11px;color:#9aa8c5;margin:0 0 10px}
-#rankScrim{position:fixed;inset:0;z-index:91;background:rgba(0,0,0,.45);display:none;backdrop-filter:blur(4px)}
+#rankRail .rank-table{overflow-x:auto;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y!important;width:100%}
+#rankScrim{position:fixed;inset:0;z-index:91;background:rgba(0,0,0,.45);display:none;backdrop-filter:blur(4px);touch-action:manipulation}
 #rankScrim.on{display:block}
+@media(max-width:480px){
+  #rankRail{width:min(100vw,100%);max-width:100%}
+}
 
 #gearBtn{position:absolute;top:max(10px,env(safe-area-inset-top));right:10px;z-index:45;width:44px;height:44px;border-radius:14px;border:1px solid rgba(255,255,255,.14);background:rgba(8,10,24,.88);color:#9aa8c5;display:flex;align-items:center;justify-content:center;pointer-events:auto;touch-action:manipulation;backdrop-filter:blur(12px);box-shadow:0 6px 20px rgba(0,0,0,.35);padding:0}
 #gearBtn svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
@@ -2355,18 +2373,37 @@ const st=document.createElement('style');st.textContent=`
 #specCount svg{width:14px;height:14px;stroke:#64f5d2;fill:none;stroke-width:2;stroke-linecap:round}
 #specCount b{color:#64f5d2;font-weight:900}
 
-#settingsSheet{position:fixed;inset:0;z-index:100;display:none;background:rgba(2,4,12,.72);backdrop-filter:blur(16px);pointer-events:auto}
+#settingsSheet{position:fixed;inset:0;z-index:100;display:none;align-items:stretch;justify-content:center;padding:max(8px,env(safe-area-inset-top)) 10px max(8px,env(safe-area-inset-bottom));background:rgba(2,4,12,.72);backdrop-filter:blur(16px);pointer-events:auto;overflow:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y pan-x!important;overscroll-behavior:contain}
 #settingsSheet.on{display:flex}
-#settingsSheet .panel{display:flex;width:min(100%,920px);height:min(100%,640px);margin:auto;border-radius:22px;overflow:hidden;border:1px solid rgba(0,255,210,.2);background:#0a0e1c;box-shadow:0 30px 80px rgba(0,0,0,.55);max-height:calc(100% - 24px)}
-#settingsSheet .side{width:168px;flex-shrink:0;background:linear-gradient(180deg,#12182c,#0a0e18);border-right:1px solid rgba(255,255,255,.07);padding:14px 10px;display:flex;flex-direction:column;gap:4px}
+#settingsSheet,#settingsSheet *{touch-action:pan-y pan-x!important}
+#settingsSheet button,#settingsSheet .tog,#settingsSheet .seg button{touch-action:manipulation!important}
+#settingsSheet input[type=range]{touch-action:pan-x!important}
+#settingsSheet .panel{display:flex;flex-direction:row;width:min(100%,920px);max-width:100%;height:auto;max-height:min(92dvh,640px);min-height:0;margin:auto;border-radius:22px;overflow:hidden;border:1px solid rgba(0,255,210,.2);background:#0a0e1c;box-shadow:0 30px 80px rgba(0,0,0,.55)}
+#settingsSheet .side{width:168px;flex-shrink:0;background:linear-gradient(180deg,#12182c,#0a0e18);border-right:1px solid rgba(255,255,255,.07);padding:14px 10px;display:flex;flex-direction:column;gap:4px;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-y!important}
 #settingsSheet .side h4{font-size:10px;letter-spacing:2px;color:rgba(255,255,255,.35);margin:4px 8px 10px;font-weight:800}
-#settingsSheet .side button{text-align:left;padding:11px 12px;border-radius:12px;border:0;background:transparent;color:rgba(255,255,255,.65);font-size:12px;font-weight:800;touch-action:manipulation}
+#settingsSheet .side button{text-align:left;padding:11px 12px;border-radius:12px;border:0;background:transparent;color:rgba(255,255,255,.65);font-size:12px;font-weight:800;touch-action:manipulation!important;flex-shrink:0}
 #settingsSheet .side button.on{background:rgba(0,255,210,.12);color:#64f5d2}
-#settingsSheet .main{flex:1;display:flex;flex-direction:column;min-width:0;background:#0c1020}
-#settingsSheet .main head,#settingsSheet .mhead{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.06)}
+#settingsSheet .main{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0;background:#0c1020}
+#settingsSheet .main head,#settingsSheet .mhead{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.06);flex-shrink:0}
 #settingsSheet .mhead h2{font-size:16px;font-weight:950;letter-spacing:1px;color:#fff}
-#settingsSheet .mclose{width:36px;height:36px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:#fff;font-size:18px;touch-action:manipulation}
-#settingsSheet .body{flex:1;overflow:auto;padding:14px 16px 24px;overscroll-behavior:contain}
+#settingsSheet .mclose{width:36px;height:36px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:#fff;font-size:18px;touch-action:manipulation!important}
+#settingsSheet .body{flex:1;min-height:0;overflow-x:auto;overflow-y:auto;padding:14px 16px 28px;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-y pan-x!important}
+@media(max-width:720px){
+  #settingsSheet{padding:max(6px,env(safe-area-inset-top)) 6px max(6px,env(safe-area-inset-bottom));align-items:flex-start}
+  #settingsSheet .panel{flex-direction:column;width:100%;max-height:min(94dvh,900px);height:auto;border-radius:18px}
+  #settingsSheet .side{width:100%;flex-direction:row;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;border-right:0;border-bottom:1px solid rgba(255,255,255,.07);padding:10px 8px;gap:6px;-webkit-overflow-scrolling:touch;touch-action:pan-x!important;scrollbar-width:thin}
+  #settingsSheet .side h4{display:none}
+  #settingsSheet .side button{flex:0 0 auto;padding:10px 12px;white-space:nowrap;font-size:11px}
+  #settingsSheet .main{min-height:0;flex:1}
+  #settingsSheet .body{padding:12px 12px 32px;max-height:none}
+  #settingsSheet .row{flex-wrap:wrap;gap:8px}
+  #settingsSheet .row>div:first-child{flex:1 1 140px;min-width:0}
+}
+@media(max-height:560px){
+  #settingsSheet .panel{max-height:96dvh}
+  #settingsSheet .mhead{padding:10px 12px}
+  #settingsSheet .body{padding-bottom:20px}
+}
 #settingsSheet .sec{display:none}
 #settingsSheet .sec.on{display:block}
 #settingsSheet .row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 4px;border-bottom:1px solid rgba(255,255,255,.05)}
