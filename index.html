@@ -280,6 +280,31 @@ html,body{height:100%;min-height:0;overflow:hidden}
 }
 
 
+
+/* ===== ROBOT STATS PANEL ===== */
+#botStats{
+  width:min(100%,420px);margin:4px auto 2px;padding:12px 14px 14px;
+  border:1px solid rgba(148,171,220,.18);border-radius:16px;
+  background:linear-gradient(155deg,rgba(18,25,49,.88),rgba(8,12,27,.94));
+  box-shadow:0 10px 28px rgba(0,0,0,.22);backdrop-filter:blur(12px);
+}
+#botStats .bs-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+#botStats .bs-name{font-size:15px;font-weight:900;letter-spacing:.6px;color:#fff}
+#botStats .bs-role{font-size:10px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:var(--bs-c,#64f5d2);opacity:.9}
+#botStats .bs-row{display:grid;grid-template-columns:92px 1fr 36px;align-items:center;gap:8px;margin:5px 0}
+#botStats .bs-lab{font-size:10px;font-weight:800;letter-spacing:.4px;color:#9aa8c5;text-transform:uppercase}
+#botStats .bs-track{height:8px;border-radius:6px;background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.06);overflow:hidden}
+#botStats .bs-fill{height:100%;width:0;border-radius:6px;background:linear-gradient(90deg,color-mix(in srgb,var(--bs-c,#64f5d2) 70%,#fff),var(--bs-c,#64f5d2));box-shadow:0 0 10px color-mix(in srgb,var(--bs-c,#64f5d2) 35%,transparent);transition:width .22s ease}
+#botStats .bs-val{font-size:11px;font-weight:900;color:#e8eefc;text-align:right;font-variant-numeric:tabular-nums}
+@media(max-width:380px){
+  #botStats{padding:10px 11px}
+  #botStats .bs-row{grid-template-columns:78px 1fr 32px;gap:6px}
+  #botStats .bs-lab{font-size:9px}
+}
+@media(max-height:700px){
+  #botStats{margin-top:0;padding:8px 12px 10px}
+  #botStats .bs-row{margin:3px 0}
+}
 /* ===== MOBILE CONTROL & PERFORMANCE TUNING ===== */
 :root{
   --joy-size:130px;
@@ -352,6 +377,14 @@ body.playing{overscroll-behavior:none;position:fixed;width:100%;height:100%}
       <div id="miniStats">Gastprofil · lokal</div>
     </div>
     <div class="showcase" id="sel"></div>
+    <div id="botStats" aria-live="polite">
+      <div class="bs-head"><div class="bs-name" id="bsName">NYX</div><div class="bs-role" id="bsRole">Phantom</div></div>
+      <div class="bs-row"><div class="bs-lab">Stärke</div><div class="bs-track"><div class="bs-fill" id="bsDmg"></div></div><div class="bs-val" id="bsDmgV">—</div></div>
+      <div class="bs-row"><div class="bs-lab">Leben</div><div class="bs-track"><div class="bs-fill" id="bsHp"></div></div><div class="bs-val" id="bsHpV">—</div></div>
+      <div class="bs-row"><div class="bs-lab">Schuss-Tempo</div><div class="bs-track"><div class="bs-fill" id="bsBspd"></div></div><div class="bs-val" id="bsBspdV">—</div></div>
+      <div class="bs-row"><div class="bs-lab">Feuerrate</div><div class="bs-track"><div class="bs-fill" id="bsRate"></div></div><div class="bs-val" id="bsRateV">—</div></div>
+      <div class="bs-row"><div class="bs-lab">Geschwindigkeit</div><div class="bs-track"><div class="bs-fill" id="bsSpd"></div></div><div class="bs-val" id="bsSpdV">—</div></div>
+    </div>
     <div class="play-wrap"><button id="go">FIGHT</button></div>
     <div class="hint">Wähle deinen Roboter · Tippe deinen Namen</div>
   </div>
@@ -732,15 +765,67 @@ const BRS = [
 
 let sel = BRS[0];
 const selEl = document.getElementById('sel');
+/* Normalize stats bars against roster min/max so every robot is comparable */
+const STAT_RANGES = (() => {
+  const pick = k => BRS.map(b => b[k]);
+  const mm = (arr) => ({ min: Math.min(...arr), max: Math.max(...arr) });
+  return {
+    dmg: mm(pick('dmg')),
+    hp: mm(pick('hp')),
+    bSpd: mm(pick('bSpd')),
+    /* rate is seconds between shots → lower is better; bar shows fire speed */
+    rate: mm(pick('rate')),
+    spd: mm(pick('spd'))
+  };
+})();
+function statPct(val, range, invert) {
+  const span = range.max - range.min || 1;
+  let t = (val - range.min) / span;
+  if (invert) t = 1 - t;
+  return Math.round(Math.max(0, Math.min(1, t)) * 100);
+}
+function showBotStats(b) {
+  if (!b) return;
+  const root = document.getElementById('botStats');
+  if (!root) return;
+  root.style.setProperty('--bs-c', b.color || '#64f5d2');
+  const set = (id, pct, label) => {
+    const fill = document.getElementById(id);
+    const val = document.getElementById(id + 'V');
+    if (fill) fill.style.width = pct + '%';
+    if (val) val.textContent = label;
+  };
+  const n = document.getElementById('bsName');
+  const r = document.getElementById('bsRole');
+  if (n) n.textContent = b.name;
+  if (r) r.textContent = b.role || '';
+  /* Stärke = Schaden pro Schuss */
+  set('bsDmg', statPct(b.dmg, STAT_RANGES.dmg, false), String(b.dmg));
+  /* Leben / Verteidigung */
+  set('bsHp', statPct(b.hp, STAT_RANGES.hp, false), String(b.hp));
+  /* Schussgeschwindigkeit (Projektil) */
+  set('bsBspd', statPct(b.bSpd, STAT_RANGES.bSpd, false), String(b.bSpd));
+  /* Feuerrate: Anzeige als Schuss/s + Balken (höher = schneller) */
+  const rps = b.rate > 0 ? (1 / b.rate) : 0;
+  set('bsRate', statPct(b.rate, STAT_RANGES.rate, true), rps.toFixed(1) + '/s');
+  /* Spieler-Bewegungsgeschwindigkeit */
+  set('bsSpd', statPct(b.spd, STAT_RANGES.spd, false), String(b.spd));
+}
 BRS.forEach((b, i) => {
   const c = document.createElement('div');
   c.className = 'brawler' + (i === 0 ? ' on' : '');
   c.style.setProperty('--c', b.color);
   const m = MODELS[b.id];
   c.innerHTML = `<div class="trophy">🏆</div><div class="icon-wrap">${m ? modelSVG(m) : b.icon}</div><div class="name">${b.name}</div><div class="role">${b.role}</div>`;
-  c.onclick = () => { document.querySelectorAll('.brawler').forEach(x => x.classList.remove('on')); c.classList.add('on'); sel = b; };
+  c.onclick = () => {
+    document.querySelectorAll('.brawler').forEach(x => x.classList.remove('on'));
+    c.classList.add('on');
+    sel = b;
+    showBotStats(b);
+  };
   selEl.appendChild(c);
 });
+showBotStats(sel);
 document.getElementById('go').onclick = () => start();
 document.getElementById('nick').addEventListener('keydown', e => {
   e.stopPropagation();
