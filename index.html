@@ -1129,28 +1129,57 @@ function update(dt) {
   }
 
   for (let i = bullets.length - 1; i >= 0; i--) {
-    const b = bullets[i]; b.x += b.vx * dt; b.y += b.vy * dt; b.life -= dt;
+    const b = bullets[i];
+    b._px = b.x; b._py = b.y;
+    b.x += b.vx * dt; b.y += b.vy * dt; b.life -= dt;
     b.trail.push({ x: b.x, y: b.y, life: .065 }); if (b.trail.length > 10) b.trail.shift(); for (const t of b.trail) t.life -= dt;
     if (b.life <= 0 || b.x < -70 || b.x > A + 70 || b.y < -70 || b.y > A + 70) { bullets.splice(i, 1); continue; }
     let hit = 0; for (const o of obs) { if (cRect(b.x, b.y, b.r, o.x, o.y, o.w, o.h)) { if (!b.pierce) { burst(b.x, b.y, b.col, 5, 100); hit = 1; } break; } }
     if (hit) { bullets.splice(i, 1); continue; }
-    if (!b.fp && b.owner !== P && P.alive && P.inv <= 0 && dist(b, P) < P.r + b.r) {
-      /* Friendly Fire aus: Kugeln von echten Spielern ignorieren (Bots treffen weiter) */
-      const own = b.owner;
-      const isHuman = own && (own === P || (typeof LIVE !== 'undefined' && LIVE.att && LIVE.R && LIVE.R[own.uid]));
-      if (typeof LIVE !== 'undefined' && LIVE.att && LIVE.ff === false && isHuman && !b._fromBot) {
-        bullets.splice(i, 1); continue;
+    if (!b.fp && b.owner !== P && P.alive && P.inv <= 0) {
+      /* Sweep + lag pad so remote bullets still register under interpolation */
+      const pad = (typeof LIVE !== 'undefined' && LIVE.att && b._s) ? 14 : 0;
+      const hitR = P.r + (b.r || 5) + pad;
+      const x0 = b._px != null ? b._px : b.x, y0 = b._py != null ? b._py : b.y;
+      const dx = b.x - x0, dy = b.y - y0, len2 = dx * dx + dy * dy;
+      let hitP = false;
+      if (len2 < 1) hitP = dist(b, P) < hitR;
+      else {
+        let t = ((P.x - x0) * dx + (P.y - y0) * dy) / len2;
+        t = t < 0 ? 0 : t > 1 ? 1 : t;
+        hitP = Math.hypot(P.x - (x0 + dx * t), P.y - (y0 + dy * t)) < hitR;
       }
-      P.hp -= b.dmg || 9; P.sup = Math.min(P.cost, P.sup + 2.5); burst(b.x, b.y, '#ff4d7a', 10, 140); fDmg(P.x, P.y - 24, Math.round(b.dmg || 9), '#ff6b6b'); cam.sh = 8; sfx.hurt(); haptic(18); bullets.splice(i, 1);
-      if (P.hp <= 0) { P.hp = 0; P.alive = 0; burst(P.x, P.y, P.col, 70, 500); flash(.2); end(0); } continue;
+      if (hitP) {
+        /* Friendly Fire aus: Kugeln von echten Spielern ignorieren (Bots treffen weiter) */
+        const own = b.owner;
+        const isHuman = own && (own === P || (typeof LIVE !== 'undefined' && LIVE.att && LIVE.R && (LIVE.R[own.uid] || LIVE.R[own.id])));
+        if (typeof LIVE !== 'undefined' && LIVE.att && LIVE.ff === false && isHuman && !b._fromBot) {
+          bullets.splice(i, 1); continue;
+        }
+        P.hp -= b.dmg || 9; P.sup = Math.min(P.cost, P.sup + 2.5); burst(b.x, b.y, '#ff4d7a', 10, 140); fDmg(P.x, P.y - 24, Math.round(b.dmg || 9), '#ff6b6b'); cam.sh = 8; sfx.hurt(); if (typeof haptic === 'function') haptic(18); bullets.splice(i, 1);
+        if (P.hp <= 0) { P.hp = 0; P.alive = 0; burst(P.x, P.y, P.col, 70, 500); flash(.2); end(0); } continue;
+      }
     }
     if (b.fp || (b.owner && b.owner !== P)) {
       for (const bot of bots) {
         if (!bot.alive || b.hit.has(bot.id) || bot === b.owner) continue;
-        if (dist(b, bot) < bot.r + b.r) {
+        {
+          const pad = (typeof LIVE !== 'undefined' && LIVE.att) ? 10 : 0;
+          const x0 = b._px != null ? b._px : b.x, y0 = b._py != null ? b._py : b.y;
+          const dx = b.x - x0, dy = b.y - y0, len2 = dx * dx + dy * dy;
+          const R = bot.r + b.r + pad;
+          let hitB = false;
+          if (len2 < 1) hitB = dist(b, bot) < R;
+          else {
+            let t = ((bot.x - x0) * dx + (bot.y - y0) * dy) / len2;
+            t = t < 0 ? 0 : t > 1 ? 1 : t;
+            hitB = Math.hypot(bot.x - (x0 + dx * t), bot.y - (y0 + dy * t)) < R;
+          }
+          if (hitB) {
           if (b.fp) dmgBot(bot, b.dmg, 0);
           else { bot.hp -= b.dmg || 10; burst(b.x, b.y, bot.col, 7, 110); if (bot.hp <= 0) { bot.alive = 0; bot.hp = 0; burst(bot.x, bot.y, bot.col, 28, 280); setTimeout(() => { if (over) return; let x, y; do { x = 160 + Math.random() * (A - 320); y = 160 + Math.random() * (A - 320); } while (Math.hypot(x - P.x, y - P.y) < 350); bot.x = x; bot.y = y; bot.hp = bot.max; bot.alive = 1; bot.target = null; }, 3000); } }
           b.hit.add(bot.id); if (!b.pierce) { bullets.splice(i, 1); break; }
+          }
         }
       }
     }
@@ -1173,7 +1202,7 @@ function update(dt) {
 
   fx.update(dt);
   // Lock-on for aim assist (bots + remote players + bot proxies in live)
-  let lock = null, best = .22;
+  let lock = null, best = (typeof LIVE !== 'undefined' && LIVE.att) ? 0.32 : 0.22;
   if (P.alive && inp.aiming) {
     const targets = [];
     for (const b of bots) if (b.alive) targets.push(b);
@@ -1183,7 +1212,7 @@ function update(dt) {
     }
     for (const b of targets) {
       const d = dist(P, b);
-      if (d > 520 || d < 1) continue;
+      if (d > 560 || d < 1) continue;
       const aT = ang(P, b);
       let da = aT - P.angle;
       while (da > Math.PI) da -= Math.PI * 2;
@@ -1996,8 +2025,8 @@ const oc=window.__oc;let fdb=null,fauth=null;
 try{fdb=firebase.database();fauth=firebase.auth();}catch(e){}
 let DELAY=110;     /* ms Render-Verzögerung der anderen Spieler. Bei starkem Ruckeln auf 150 erhöhen, bei zu viel Lag auf 80 senken */
 try{if(window.__NET_DELAY)DELAY=+window.__NET_DELAY||110}catch(e){}
-const SEND_MS=40;    /* Sende-Takt Spieler */
-const BOT_MS=50;     /* Sende-Takt Bots (nur Host) */
+const SEND_MS=33;    /* Sende-Takt Spieler (~30 Hz, flüssiger gegen Aussetzer) */
+const BOT_MS=45;     /* Sende-Takt Bots (nur Host) */
 const st=document.createElement('style');st.textContent=`
 #liveGo{width:100%;height:50px;margin-top:10px;border:0;border-radius:16px;cursor:pointer;font-size:17px;font-weight:900;letter-spacing:2px;color:#fff;background:linear-gradient(180deg,#5aa7ff,#2f6bff);box-shadow:0 5px 0 #1b3fb0,0 8px 18px rgba(0,0,0,.35);touch-action:manipulation}
 #liveGo:active{transform:translateY(3px);box-shadow:0 2px 0 #1b3fb0}#liveMsg{font-size:11px;color:#9aa8c5;text-align:center;margin-top:8px;min-height:14px}
@@ -2437,14 +2466,15 @@ function smooth(r, dt) {
   let x, y, a, vx = 0, vy = 0;
   if (rt >= b[n - 1].t) {
     const l = b[n - 1];
-    const te = Math.min(1, Math.max(0, (rt - l.t) / 1000));
-    const k = te * (1 - te * 0.5);
+    /* short extrapolation only – long extrapolate causes rubber-banding / ghost shots */
+    const te = Math.min(0.12, Math.max(0, (rt - l.t) / 1000));
+    const k = te * 0.85;
     x = Math.max(20, Math.min(A - 20, l.x + (l.vx || 0) * k));
     y = Math.max(20, Math.min(A - 20, l.y + (l.vy || 0) * k));
     a = l.a;
-    vx = (l.vx || 0) * (1 - te);
-    vy = (l.vy || 0) * (1 - te);
-    if (rt - l.t > 60) r.exT = performance.now();
+    vx = (l.vx || 0) * (1 - te * 4);
+    vy = (l.vy || 0) * (1 - te * 4);
+    if (rt - l.t > 90) r.exT = performance.now();
   } else if (rt <= b[0].t) {
     const f = b[0];
     x = f.x; y = f.y; a = f.a;
@@ -2521,23 +2551,29 @@ const batches = s => Object.values(s || {}).filter(Boolean).sort((a, b) => a.q -
 /* Convert remote shot batch into local simulated projectiles.
    Timing compensated for latency so the bullet appears where it should be. */
 function shots(r, s) {
-  const lat = Math.max(0, Math.min(0.25, (now() - s.t) / 1000));
+  /* Cap rewind so bullets do not overshoot past the target under high ping */
+  const lat = Math.max(0, Math.min(0.18, (now() - s.t) / 1000));
   for (const b of s.b || []) {
+    const life = Math.max(0.12, (b[7] || 1) - lat * 0.5);
+    const bx = b[0] + b[2] * lat;
+    const by = b[1] + b[3] * lat;
     bullets.push({
-      x: b[0] + b[2] * lat,
-      y: b[1] + b[3] * lat,
+      x: bx,
+      y: by,
+      _px: bx,
+      _py: by,
       vx: b[2],
       vy: b[3],
       dmg: b[4],
-      r: b[5],
+      r: Math.max(4, b[5] || 5),
       col: b[6],
-      life: b[7] - lat,
+      life,
       fp: 0,
       pierce: 0,
       trail: [],
       hit: new Set(),
       owner: r,
-      _s: 1,          /* remote-synced bullet */
+      _s: 1,
       _fromBot: !!r._bot
     });
   }
@@ -2670,11 +2706,28 @@ function attach() {
           vx: 0, vy: 0, buf: [], mo: null, _bot: 1
         };
       }
+      const wasAlive = r.alive;
       addSample(r, v.t, o.x, o.y, o.a, o.vx, o.vy);
       Object.assign(r, {
         hp: o.hp, max: o.m, alive: o.al, modelId: o.mo, col: o.c,
-        name: o.n, r: o.r || 20, _bot: 1
+        name: o.n, r: o.r || 20, _bot: 1, _bi: i, uid: r.uid || ('bot' + i)
       });
+      /* Non-host: if we recently damaged this bot and it died, credit local kill */
+      if (wasAlive && !o.al && P && P.alive && LIVE.botHits && LIVE.botHits[i] && now() - LIVE.botHits[i] < 1200) {
+        if (!r._credited) {
+          r._credited = 1;
+          P.kills++;
+          LIVE.hk = (LIVE.hk || 0); /* human kills unchanged */
+          streak++;
+          streakT = 4.5;
+          if (streak >= 2) showStreak(streak);
+          sfx.kill();
+          P.hp = Math.min(P.max, P.hp + 12);
+          feed((P.name || 'Du') + ' elim. ' + (o.n || 'Bot'));
+          msg(streak >= 6 ? 'GODLIKE!' : streak >= 3 ? 'RAMPAGE!' : 'ELIMINATED!', 0.45);
+        }
+      }
+      if (o.al) r._credited = 0;
     });
     B.length = a.length;
   });
@@ -2745,13 +2798,15 @@ function attach() {
       snap.ref.remove().catch(() => {});
       return;
     }
-    const bot = bots[v.bi];
+    const bi = v.bi | 0;
+    const bot = bots[bi];
     if (!bot || !bot.alive) {
       snap.ref.remove().catch(() => {});
       return;
     }
-    /* simple validation: shooter must be near-ish or we accept for responsiveness */
-    bot.hp -= v.dmg || 10;
+    /* accept hit reports; clamp damage to sane range */
+    const dmg = Math.max(1, Math.min(80, v.dmg || 10));
+    bot.hp -= dmg;
     if (bot.hp <= 0) {
       bot.alive = 0;
       bot.hp = 0;
@@ -2951,20 +3006,33 @@ window.__liveDmgBot = function (bot, dmg, isSuper) {
   } else {
     /* non-host: visual feedback + report hit to host */
     if (!bot || !bot.alive) return;
-    const bi = LIVE.B.indexOf(bot);
+    let bi = (bot._bi != null) ? bot._bi : LIVE.B.indexOf(bot);
+    if (bi < 0) {
+      /* fallback: match by position */
+      let best = -1, bd = 40;
+      for (let i = 0; i < LIVE.B.length; i++) {
+        const r = LIVE.B[i];
+        if (!r || !r.alive) continue;
+        const d = Math.hypot((r.x||0) - bot.x, (r.y||0) - bot.y);
+        if (d < bd) { bd = d; best = i; }
+      }
+      bi = best;
+    }
     if (bi < 0) return;
     burst(bot.x, bot.y, bot.col, 10, 140);
     fx.hit(bot.x, bot.y, P.col);
     fDmg(bot.x, bot.y - 22, Math.round(dmg), '#fff');
     sfx.hit();
     P.sup = Math.min(P.cost, P.sup + 6);
-    /* throttle reports */
-    const key = bi + '_' + Math.floor(now() / 200);
-    if (LIVE.botHits[key]) return;
-    LIVE.botHits[key] = 1;
+    /* throttle: max ~8 reports/sec per bot, not per 200ms bucket lossy */
+    const key = bi;
+    const t = now();
+    if (!LIVE.botHits) LIVE.botHits = {};
+    if (LIVE.botHits[key] && t - LIVE.botHits[key] < 90) return;
+    LIVE.botHits[key] = t;
     if (LIVE.base) {
       LIVE.base.child('bh').push({
-        bi, dmg: Math.round(dmg), by: LIVE.sid, bn: P.name, t: now()
+        bi, dmg: Math.round(dmg), by: LIVE.sid, bn: P.name, t
       }).catch(fail);
     }
   }
@@ -3075,54 +3143,85 @@ window.update = function (dt) {
   if (LIVE.send) LIVE.send();
   if (LIVE.sendBots) LIVE.sendBots();
 
-  /* Queue local player shots (and host bot shots) for network */
+  /* Queue local player shots (and host bot shots) for network.
+     _netQ = already pushed to Firebase; collision still runs (_s was wrongly blocking hits). */
   for (const b of bullets) {
-    if (!b._s && (b.fp || (LIVE.host && b.owner && b.owner.type))) {
-      b._s = 1;
+    if (!b._netQ && (b.fp || (LIVE.host && b.owner && b.owner.type))) {
+      b._netQ = 1;
+      b._s = 1; /* remote replicas use _s; local keeps colliding via fp path below */
       LIVE.q.push([
         Math.round(b.x), Math.round(b.y),
         Math.round(b.vx), Math.round(b.vy),
-        b.dmg || 10, b.r, b.col, +b.life.toFixed(2)
+        b.dmg || 10, b.r, b.col, +Math.max(0.05, b.life).toFixed(2)
       ]);
     }
+  }
+
+  /* Segment hit test: catches fast bullets that would tunnel through lagged proxies */
+  function segHit(b, tx, ty, tr, pad) {
+    const R = (tr || 22) + (b.r || 5) + (pad || 0);
+    const x0 = b._px != null ? b._px : b.x, y0 = b._py != null ? b._py : b.y;
+    const x1 = b.x, y1 = b.y;
+    const dx = x1 - x0, dy = y1 - y0;
+    const len2 = dx * dx + dy * dy;
+    if (len2 < 1) return Math.hypot(tx - x1, ty - y1) <= R;
+    let t = ((tx - x0) * dx + (ty - y0) * dy) / len2;
+    t = t < 0 ? 0 : t > 1 ? 1 : t;
+    const cx = x0 + dx * t, cy = y0 + dy * t;
+    return Math.hypot(tx - cx, ty - cy) <= R;
+  }
+
+  /* Store previous pos for sweep (set after checks) */
+  for (const b of bullets) {
+    if (b._px == null) { b._px = b.x; b._py = b.y; }
   }
 
   /* Local player bullets vs remote players / bot proxies */
   for (let i = bullets.length - 1; i >= 0; i--) {
     const b = bullets[i];
-    if (!b.fp || b._s) continue;
+    if (!b.fp) continue; /* only own shots */
+    if (b._remoteHit) continue;
     let consumed = false;
     /* vs bot proxies (non-host): report damage to host */
     if (!LIVE.host) {
-      for (const r of rem) {
-        if (!r.alive || b.hit.has(r.uid) || dist(b, r) > (r.r || 22) + b.r) continue;
-        b.hit.add(r.uid);
+      for (let bi = 0; bi < rem.length; bi++) {
+        const r = rem[bi];
+        if (!r || !r.alive) continue;
+        const id = r.uid || ('bot' + bi);
+        if (b.hit.has(id)) continue;
+        /* generous pad: interpolation lag */
+        if (!segHit(b, r.x, r.y, r.r || 20, 14)) continue;
+        b.hit.add(id);
+        r._bi = bi;
         if (typeof window.__liveDmgBot === 'function') window.__liveDmgBot(r, b.dmg || 10, 0);
         if (!b.pierce) { bullets.splice(i, 1); consumed = true; break; }
       }
     }
     if (consumed) continue;
-    /* vs remote players: visual only (victim applies real damage) */
+    /* vs remote players: local feedback; victim still applies authoritative HP via their replica of this shot */
     for (const r of players) {
-      if (!r.alive || b.hit.has(r.uid) || dist(b, r) > (r.r || 22) + b.r) continue;
+      if (!r.alive || b.hit.has(r.uid)) continue;
+      if (!segHit(b, r.x, r.y, r.r || 22, 16)) continue;
       b.hit.add(r.uid);
       burst(b.x, b.y, b.col, 8, 140);
       fx.hit(r.x, r.y, b.col);
-      fDmg(r.x, r.y - 22, Math.round(b.dmg), '#fff');
+      fDmg(r.x, r.y - 22, Math.round(b.dmg || 10), '#fff');
       sfx.hit();
       P.sup = Math.min(P.cost, P.sup + 6);
       if (!b.pierce) { bullets.splice(i, 1); break; }
     }
   }
 
+  /* Remember last position for next frame sweep */
+  for (const b of bullets) { b._px = b.x; b._py = b.y; }
+
   /* Block bot bullets from damaging other remote players on this client */
   for (let i = bullets.length - 1; i >= 0; i--) {
     const b = bullets[i];
     if (!b._fromBot) continue;
-    /* bot bullets only hurt local player (already in core loop); never mark remote players */
     for (const r of players) {
       if (b.hit.has(r.uid)) continue;
-      if (dist(b, r) <= (r.r || 22) + b.r) b.hit.add(r.uid); /* consume so core doesn't double */
+      if (segHit(b, r.x, r.y, r.r || 22, 8)) b.hit.add(r.uid);
     }
   }
 
