@@ -307,6 +307,14 @@ html,body{height:100%;min-height:0;overflow:hidden}
 @keyframes rnGold{0%,100%{filter:brightness(1)}50%{filter:brightness(1.25)}}
 @keyframes rnShimmer{0%{background-position:0% 50%}100%{background-position:200% 50%}}
 @keyframes rnPulse{0%,100%{filter:drop-shadow(0 0 8px rgba(100,245,210,.4))}50%{filter:drop-shadow(0 0 16px rgba(100,245,210,.75))}}
+
+.rank-row.rank-line{display:grid;grid-template-columns:40px minmax(0,1.2fr) minmax(0,1.4fr) auto;gap:8px;align-items:center;padding:10px 12px}
+.rank-stats{display:flex;flex-wrap:wrap;gap:6px 10px;font-size:10px;font-weight:800;color:#9aa8c5}
+.rank-stats span{white-space:nowrap}
+@media(max-width:420px){
+  .rank-row.rank-line{grid-template-columns:36px minmax(0,1fr) auto;gap:6px}
+  .rank-stats{grid-column:1/-1;padding-left:36px}
+}
 /* ===== ROBOT STATS PANEL ===== */
 #botStats{
   width:min(100%,420px);margin:4px auto 2px;padding:12px 14px 14px;
@@ -1288,7 +1296,7 @@ function update(dt) {
     if (hit) { bullets.splice(i, 1); continue; }
     if (!b.fp && b.owner !== P && P.alive && P.inv <= 0) {
       /* Sweep + lag pad so remote bullets still register under interpolation */
-      const pad = (typeof LIVE !== 'undefined' && LIVE.att && b._s) ? 14 : 0;
+      const pad = (typeof LIVE !== 'undefined' && LIVE.att && b._s) ? 20 : 0;
       const hitR = P.r + (b.r || 5) + pad;
       const x0 = b._px != null ? b._px : b.x, y0 = b._py != null ? b._py : b.y;
       const dx = b.x - x0, dy = b.y - y0, len2 = dx * dx + dy * dy;
@@ -2019,9 +2027,29 @@ bu.insertAdjacentHTML('beforeend','<div id="buc">0%</div>');const buc=$('buc');
 function podHTML(l){return '<div class="pod">'+[1,0,2].map(i=>{const p=l[i],r=rankInfo(p?p.rp:0);
   return `<div class="pc p${i+1}"><div class="pm">${['🥇','🥈','🥉'][i]}</div><div class="pn">${p?rankNameHTML(p.name,p.rp):'—'}</div><div class="pr" style="color:${r.col}">${p?r.ico+' '+r.name:'frei'}</div><div class="pb"><span>${p?p.rp:0}</span></div></div>`}).join('')+'</div>'}
 function renderBoard(){
-  const h=podHTML(board);document.querySelectorAll('.podium-host').forEach(e=>e.innerHTML=h);
-  const rowsHtml=board.slice(3).map((p,i)=>{const r=rankInfo(p.rp),me=user&&p.uid===user.uid;
-    return `<div class="rank-row" style="${me?'border-color:#00ffd0':''}"><span class="rank-number">#${i+4}</span><span class="rank-player">${rankNameHTML(p.name,p.rp)}<small class="rank-sub" style="color:${r.col}">${r.ico} ${r.name} · ${p.wins|0} Siege</small></span><span class="rank-score">${p.rp|0} RP</span></div>`}).join('')||(board.length?'':'<div class="online-muted">Noch keine Piloten. Melde dich an und sei der Erste!</div>');
+  /* Podium optional leer lassen – alles in Zeilen Top 10 */
+  document.querySelectorAll('.podium-host').forEach(e=>{e.innerHTML='';e.style.display='none'});
+  const top = board.slice(0,10);
+  const rowsHtml = top.length ? top.map((p,i)=>{
+    const r=rankInfo(p.rp|0), me=user&&p.uid===user.uid;
+    const med = i===0?'🥇':i===1?'🥈':i===2?'🥉':('#'+(i+1));
+    const kills=p.kills|0, deaths=p.deaths|0;
+    const kd = deaths>0 ? (kills/deaths).toFixed(2) : (kills>0?kills.toFixed(1):'0');
+    const wr = (p.matches|0)>0 ? Math.round(((p.wins|0)/(p.matches|0))*100) : 0;
+    return `<div class="rank-row rank-line" style="${me?'border-color:#00ffd0;background:rgba(0,255,210,.06)':''}">
+      <span class="rank-number">${med}</span>
+      <span class="rank-player">${rankNameHTML(p.name,p.rp)}
+        <small class="rank-sub" style="color:${r.col}">${r.ico} ${r.name}</small>
+      </span>
+      <span class="rank-stats">
+        <span title="Kills">⚔ ${kills}</span>
+        <span title="Tode">💀 ${deaths}</span>
+        <span title="K/D">K/D ${kd}</span>
+        <span title="Siege">${p.wins|0}W · ${wr}%</span>
+      </span>
+      <span class="rank-score">${p.rp|0} RP</span>
+    </div>`;
+  }).join('') : '<div class="online-muted">Noch keine Piloten. Melde dich an und sei der Erste!</div>';
   if($('rtRows'))$('rtRows').innerHTML=rowsHtml;
   if($('rankRailRows'))$('rankRailRows').innerHTML=rowsHtml;
 }
@@ -2065,11 +2093,12 @@ function popRP(d,a,b){
 function calcDelta(won,i){
   /* RP nur aus Kills. Minus NUR wenn Tode > Kills (z.B. 4 Kills + 1 Tod = positiv). */
   i=i||{};
-  if(i.secs!=null && i.secs<40)return null;
   const kills = i.mode==='live'
     ? Math.max(0,(i.humanKills|0)+(i.botKills|0))
     : Math.max(0,i.k|0);
   const deaths = Math.max(0,i.d|0);
+  /* Unter 45s: nur werten wenn schon Stats (Tod/Kills), sonst kein RP beim Sofort-Leave */
+  if(i.secs!=null && i.secs<45 && kills<=0 && deaths<=0) return null;
   const r = rankInfo(RP);
   const tier = r.tier|0;
   /* Abstieg nur bei klar negativer Bilanz */
@@ -2112,11 +2141,11 @@ async function applyRP(won,info){
   if(!ranked()){setTimeout(()=>msg('UNGERANKT<br><small style="font-size:13px">Melde dich an, um RP zu sammeln</small>',3),1500);return}
   info=info||{mode:'solo',k:P.kills|0};
   const d=calcDelta(won,info);
-  if(d===null){setTimeout(()=>msg('ZU KURZ<br><small style="font-size:13px">Mind. 45 s spielen für RP</small>',3),1500);return}
+  if(d===null){setTimeout(()=>msg('ZU KURZ<br><small style="font-size:13px">Zu kurz verlassen – mind. 45 s oder Kills/Tode nötig</small>',3),1500);return}
   const detail=info.mode==='live'?`Platz ${info.place}/${info.n} · ${info.humanKills|0} Spieler · ${info.botKills|0} Bots (${({easy:'leicht',mid:'mittel',hard:'schwer'}[info.diff]||'mittel')}) · ${info.d} Tode`:`${info.k} Kills · ${won?'Sieg':'Niederlage'}`;
   let prev=RP,next=applyDelta(RP,d);
   if(fdb){try{
-    const r=await fdb.ref('leaderboard/'+user.uid).transaction(c=>{c=c||{};prev=c.rp|0;c.name=nm();c.rp=applyDelta(prev,d);c.wins=(c.wins||0)+(d>0?1:0);c.kills=(c.kills||0)+(info.k|0);c.matches=(c.matches||0)+1;c.robot=window.__ocSelectedRobot||'nyx';c.t=Date.now();return c});
+    const r=await fdb.ref('leaderboard/'+user.uid).transaction(c=>{c=c||{};prev=c.rp|0;c.name=nm();c.rp=applyDelta(prev,d);c.wins=(c.wins||0)+(d>0?1:0);c.kills=(c.kills||0)+(info.k|0);c.deaths=(c.deaths||0)+(info.d|0);c.matches=(c.matches||0)+1;c.robot=window.__ocSelectedRobot||'nyx';c.t=Date.now();return c});
     if(r.snapshot.exists())next=r.snapshot.val().rp|0;
   }catch(e){console.warn('RP speichern:',e)}}
   RP=next;renderRank();
@@ -2228,7 +2257,7 @@ const oc=window.__oc;let fdb=null,fauth=null;
 try{fdb=firebase.database();fauth=firebase.auth();}catch(e){}
 let DELAY=110;     /* ms Render-Verzögerung der anderen Spieler. Bei starkem Ruckeln auf 150 erhöhen, bei zu viel Lag auf 80 senken */
 try{if(window.__NET_DELAY)DELAY=+window.__NET_DELAY||110}catch(e){}
-const SEND_MS=33;    /* Sende-Takt Spieler (~30 Hz, flüssiger gegen Aussetzer) */
+const SEND_MS=28;    /* Sende-Takt Spieler (~35 Hz) */
 const BOT_MS=45;     /* Sende-Takt Bots (nur Host) */
 const st=document.createElement('style');st.textContent=`
 #liveGo{width:100%;height:50px;margin-top:10px;border:0;border-radius:16px;cursor:pointer;font-size:17px;font-weight:900;letter-spacing:2px;color:#fff;background:linear-gradient(180deg,#5aa7ff,#2f6bff);box-shadow:0 5px 0 #1b3fb0,0 8px 18px rgba(0,0,0,.35);touch-action:manipulation}
@@ -2669,15 +2698,16 @@ function smooth(r, dt) {
   let x, y, a, vx = 0, vy = 0;
   if (rt >= b[n - 1].t) {
     const l = b[n - 1];
-    /* short extrapolation only – long extrapolate causes rubber-banding / ghost shots */
-    const te = Math.min(0.12, Math.max(0, (rt - l.t) / 1000));
-    const k = te * 0.85;
+    const age = (rt - l.t) / 1000;
+    /* kurze Extrapolation; danach Position halten (kein Ruckeln / Einfrieren durch Wildwuchs) */
+    const te = Math.min(0.1, Math.max(0, age));
+    const k = age < 0.25 ? te * 0.9 : 0;
     x = Math.max(20, Math.min(A - 20, l.x + (l.vx || 0) * k));
     y = Math.max(20, Math.min(A - 20, l.y + (l.vy || 0) * k));
     a = l.a;
-    vx = (l.vx || 0) * (1 - te * 4);
-    vy = (l.vy || 0) * (1 - te * 4);
-    if (rt - l.t > 90) r.exT = performance.now();
+    vx = age < 0.25 ? (l.vx || 0) * (1 - te * 3) : 0;
+    vy = age < 0.25 ? (l.vy || 0) * (1 - te * 3) : 0;
+    if (age > 0.15) r.exT = performance.now();
   } else if (rt <= b[0].t) {
     const f = b[0];
     x = f.x; y = f.y; a = f.a;
@@ -2799,7 +2829,7 @@ function attach() {
   bots = [];
   Object.assign(LIVE, {
     deaths: 0, hk: 0, dead: 0, q: [], sb: {}, R: {}, B: [],
-    host: false, ready: false, gt: now(), hostSettle: 0, botHits: {}
+    host: false, ready: false, gt: now(), hostSettle: 0, botHits: {}, phHits: {}
   });
   const sid = LIVE.sid, base = LIVE.base, R = LIVE.R, me = LIVE.me;
 
@@ -2993,6 +3023,33 @@ function attach() {
     snap.ref.remove().catch(() => {});
   });
 
+  /* ---- Player hit reports (shooter → victim applies HP) ---- */
+  onv(base.child('ph'), 'child_added', snap => {
+    const v = snap.val();
+    snap.ref.remove().catch(() => {});
+    if (!v || !v.to || !v.by || now() - (v.t || 0) > 2500) return;
+    if (v.to !== sid) return; /* only victim applies */
+    if (!P || !P.alive || P.inv > 0) return;
+    if (v.by === sid) return;
+    const dmg = Math.max(1, Math.min(90, v.dmg || 10));
+    P.hp -= dmg;
+    P.sup = Math.min(P.cost, P.sup + 2.5);
+    burst(P.x, P.y, '#ff4d7a', 10, 140);
+    fDmg(P.x, P.y - 24, Math.round(dmg), '#ff6b6b');
+    cam.sh = 8;
+    sfx.hurt();
+    if (typeof haptic === 'function') haptic(18);
+    if (P.hp <= 0) {
+      P.hp = 0; P.alive = 0;
+      burst(P.x, P.y, P.col, 70, 500); flash(.2);
+      /* killer credit via death packet below */
+      if (LIVE.me) {
+        LIVE.dq = (LIVE.dq || 0) + 1;
+        LIVE.me.child('d').set({ q: LIVE.dq, by: v.by, bn: v.bn || 'Pilot' }).catch(fail);
+      }
+    }
+  });
+
   /* ---- Bot hit reports from non-hosts (host applies) ---- */
   onv(base.child('bh'), 'child_added', snap => {
     if (!LIVE.host) return;
@@ -3050,19 +3107,20 @@ function attach() {
     LIVE.conn = s.val() !== false;
   });
 
-  let lastSig = '', lastT = 0, lastRun = 0;
+  let lastSig = '', lastT = 0, lastRun = 0, lastForce = 0;
   const send = () => {
     if (!LIVE.rid || !P || !me) return;
     const t = now(), pt = performance.now();
-    if (pt - lastRun < SEND_MS * 0.8) return;
+    if (pt - lastRun < SEND_MS * 0.55) return;
     lastRun = pt;
 
-    /* batch shots with unique sequence ids */
+    /* Shots: push single batches (avoid full-object race) */
     if (LIVE.q.length) {
       LIVE.seq++;
-      LIVE.sb['b' + LIVE.seq] = { q: LIVE.seq, t, b: LIVE.q.splice(0, 60) };
-      for (const k in LIVE.sb) if (LIVE.sb[k].t < t - 700) delete LIVE.sb[k];
-      me.child('s').set(LIVE.sb).catch(fail);
+      const batch = { q: LIVE.seq, t, b: LIVE.q.splice(0, 40) };
+      LIVE.sb['b' + LIVE.seq] = batch;
+      for (const k in LIVE.sb) if (LIVE.sb[k].t < t - 900) delete LIVE.sb[k];
+      me.child('s/b' + LIVE.seq).set(batch).catch(fail);
     }
 
     const o = {
@@ -3075,10 +3133,13 @@ function attach() {
       k: P.kills, h: LIVE.hk | 0, t
     };
     const sig = [o.x, o.y, o.a, o.hp, o.al, o.k, o.h, o.vx, o.vy].join();
-    if (sig === lastSig && pt - lastT < 350) return;
+    /* Force heartbeat every 180ms even if still – prevents "frozen" remote */
+    const force = (pt - lastForce > 180);
+    if (sig === lastSig && !force && pt - lastT < 120) return;
+    if (force) lastForce = pt;
     lastSig = sig;
     lastT = pt;
-    me.update(o).catch(fail);
+    me.update(o).catch(() => { /* soft fail – next tick retries */ });
   };
   LIVE.send = send;
   send();
@@ -3401,16 +3462,30 @@ window.update = function (dt) {
       }
     }
     if (consumed) continue;
-    /* vs remote players: local feedback; victim still applies authoritative HP via their replica of this shot */
+    /* vs remote players: local FX + hit report (victim applies HP via ph) */
     for (const r of players) {
       if (!r.alive || b.hit.has(r.uid)) continue;
-      if (!segHit(b, r.x, r.y, r.r || 22, 16)) continue;
+      if (!segHit(b, r.x, r.y, r.r || 22, 22)) continue; /* großer Lag-Pad */
       b.hit.add(r.uid);
       burst(b.x, b.y, b.col, 8, 140);
       fx.hit(r.x, r.y, b.col);
       fDmg(r.x, r.y - 22, Math.round(b.dmg || 10), '#fff');
       sfx.hit();
       P.sup = Math.min(P.cost, P.sup + 6);
+      /* reliable PvP: report hit to victim */
+      try {
+        if (LIVE.base && r.uid) {
+          const key = r.uid + '_' + Math.floor(now() / 80);
+          if (!LIVE.phHits) LIVE.phHits = {};
+          if (!LIVE.phHits[key]) {
+            LIVE.phHits[key] = 1;
+            LIVE.base.child('ph').push({
+              to: r.uid, by: LIVE.sid, bn: P.name,
+              dmg: Math.round(b.dmg || 10), t: now()
+            }).catch(fail);
+          }
+        }
+      } catch (e) {}
       if (!b.pierce) { bullets.splice(i, 1); break; }
     }
   }
@@ -3936,4 +4011,4 @@ try{applyGameplaySettings()}catch(e){}
 
 </script>
 </body>
-</html>
+</html>s
