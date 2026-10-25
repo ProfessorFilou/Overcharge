@@ -1018,11 +1018,11 @@ const ctx = canvas.getContext('2d');
 const mmC = document.getElementById('mm'), mmX = mmC.getContext('2d');
 let W, H, VIEW_Z = 1;
 function viewZoom() {
-  /* Handy: moderate Übersicht – nicht zu extrem (sonst wirken Bots „außerhalb“) */
+  /* Handy: leichte Übersicht, aber nicht zu weit rauszoomen – sonst wirken Einheiten „außerhalb“ */
   try {
     if (typeof IS_MOBILE !== 'undefined' && IS_MOBILE) {
       const short = Math.min(W || innerWidth, H || innerHeight);
-      return short < 400 ? 0.68 : (short < 520 ? 0.74 : 0.80);
+      return short < 400 ? 0.78 : (short < 520 ? 0.84 : 0.90);
     }
   } catch (e) {}
   return 1;
@@ -1242,7 +1242,13 @@ function update(dt) {
   if (P.dT > 0) P.dT -= dt; else { const sp = P.spd * (streak >= 3 ? 1.14 : 1); P.vx = mx * sp; P.vy = my * sp; }
   if (inp.dash && P.dCd <= 0 && ml > 0.1) { const inv = 1 / (ml || 1); P.vx = mx * inv * 1100; P.vy = my * inv * 1100; P.dT = .09; P.dCd = P.dMax; P.inv = .14; burst(P.x, P.y, '#288cff', 32, 430); sfx.dash(); inp.dash = 0; }
   if (P.dCd > 0) P.dCd -= dt; if (P.inv > 0) P.inv -= dt; if (P.gCd > 0) P.gCd -= dt;
-  P.x += P.vx * dt; P.y += P.vy * dt; P.x = clamp(P.x, P.r, A - P.r); P.y = clamp(P.y, P.r, A - P.r);
+  P.x += P.vx * dt; P.y += P.vy * dt;
+  P.x = clamp(P.x, P.r, A - P.r); P.y = clamp(P.y, P.r, A - P.r);
+  /* Geschwindigkeit an Wänden abschneiden – verhindert „Durchrutschen“ nach Dash/Super */
+  if (P.x <= P.r + 0.5 && P.vx < 0) P.vx = 0;
+  if (P.x >= A - P.r - 0.5 && P.vx > 0) P.vx = 0;
+  if (P.y <= P.r + 0.5 && P.vy < 0) P.vy = 0;
+  if (P.y >= A - P.r - 0.5 && P.vy > 0) P.vy = 0;
   for (const o of obs) push(P, o);
   if (ml > 0.08) P.angle = Math.atan2(my, mx);
 
@@ -1621,43 +1627,48 @@ function drawMM() {
   if (!P) return;
   const sz = mmC.width || 78;
   const s = sz / A;
+  const clampMM = (v) => Math.max(2, Math.min(sz - 2, v));
   mmX.clearRect(0, 0, sz, sz);
   mmX.fillStyle = 'rgba(2,3,10,.95)'; mmX.fillRect(0, 0, sz, sz);
   mmX.fillStyle = 'rgba(0,140,180,.3)';
-  for (const o of obs) mmX.fillRect(o.x * s, o.y * s, o.w * s, o.h * s);
+  for (const o of obs) mmX.fillRect(o.x * s, o.y * s, Math.max(1, o.w * s), Math.max(1, o.h * s));
+  const dot = (x, y, col, rad, ring) => {
+    if (typeof x !== 'number' || typeof y !== 'number') return;
+    const px = clampMM(x * s), py = clampMM(y * s);
+    mmX.fillStyle = col;
+    mmX.beginPath(); mmX.arc(px, py, rad, 0, Math.PI * 2); mmX.fill();
+    if (ring) {
+      mmX.strokeStyle = 'rgba(255,255,255,.9)';
+      mmX.lineWidth = 1;
+      mmX.beginPath(); mmX.arc(px, py, rad + 0.5, 0, Math.PI * 2); mmX.stroke();
+    }
+  };
   /* ALLE lokalen Bots */
   for (const b of bots) {
     if (!b || !b.alive) continue;
-    mmX.fillStyle = b.col || '#ff8a5c';
-    mmX.beginPath(); mmX.arc(b.x * s, b.y * s, Math.max(2, sz * 0.025), 0, Math.PI * 2); mmX.fill();
+    dot(b.x, b.y, b.col || '#ff8a5c', Math.max(2.2, sz * 0.028), false);
   }
   if (typeof LIVE !== 'undefined' && LIVE.att) {
     /* Bot-Proxies (nicht-Host) */
     if (!LIVE.host) {
       for (const r of (LIVE.B || [])) {
         if (!r || !r.alive) continue;
-        mmX.fillStyle = r.col || '#ff8a5c';
-        mmX.beginPath(); mmX.arc(r.x * s, r.y * s, Math.max(2, sz * 0.025), 0, Math.PI * 2); mmX.fill();
+        dot(r.x, r.y, r.col || '#ff8a5c', Math.max(2.2, sz * 0.028), false);
       }
     }
-    /* ALLE Remote-Spieler immer sichtbar */
+    /* ALLE Remote-Spieler immer sichtbar (auch wenn knapp außerhalb durch Lag) */
     for (const r of Object.values(LIVE.R || {})) {
       if (!r || r.alive === 0 || r.alive === false) continue;
       if (typeof r.x !== 'number') continue;
       const col = r.col || (typeof playerColor === 'function' ? playerColor(r.uid) : '#fff');
-      mmX.fillStyle = col;
-      mmX.beginPath(); mmX.arc(r.x * s, r.y * s, Math.max(2.4, sz * 0.032), 0, Math.PI * 2); mmX.fill();
-      mmX.strokeStyle = 'rgba(255,255,255,.9)';
-      mmX.lineWidth = 1;
-      mmX.stroke();
+      dot(r.x, r.y, col, Math.max(2.8, sz * 0.036), true);
     }
   }
   /* Spieler */
-  mmX.fillStyle = P.col || '#64f5d2';
-  mmX.shadowColor = P.col || '#64f5d2'; mmX.shadowBlur = 3;
-  mmX.beginPath(); mmX.arc(P.x * s, P.y * s, Math.max(2.8, sz * 0.036), 0, Math.PI * 2); mmX.fill();
+  mmX.shadowColor = P.col || '#64f5d2'; mmX.shadowBlur = 4;
+  dot(P.x, P.y, P.col || '#64f5d2', Math.max(3.2, sz * 0.042), false);
   mmX.shadowBlur = 0;
-  mmX.strokeStyle = 'rgba(0,255,210,.35)'; mmX.lineWidth = 1;
+  mmX.strokeStyle = 'rgba(0,255,210,.45)'; mmX.lineWidth = 1.5;
   mmX.strokeRect(.5, .5, sz - 1, sz - 1);
 }
 let __frameBudget = 0;
@@ -2740,7 +2751,7 @@ function playerColor(id){if(!id)return'#fff';if(LIVE.colors[id])return LIVE.colo
 
 let sOff=0;if(fdb)fdb.ref('.info/serverTimeOffset').on('value',s=>{sOff=s.val()||0});
 const now=()=>Date.now()+sOff;
-const fresh=v=>v&&typeof v.x==='number'&&now()-(v.t||0)<8000;
+const fresh=v=>v&&typeof v.x==='number'&&now()-(v.t||0)<12000;
 const st2=document.createElement('style');st2.textContent=`
 #lobby{position:fixed;inset:0;z-index:55;display:none;overflow:auto;background:rgba(5,7,18,.98);padding:max(16px,env(safe-area-inset-top)) 14px 24px;touch-action:pan-y}#lobby.on{display:block}
 #lobby *{touch-action:pan-y}#lobby button,#lobby input{touch-action:manipulation}
@@ -2883,7 +2894,8 @@ const clean=s=>String(s==null?'':s).replace(/[<>&"']/g,'');
 async function refreshList(){
   const box=$('lbList');if(!box||!fdb)return;
   try{
-    const rooms=(await fdb.ref('rooms2').limitToLast(50).get()).val()||{},t=now(),rows=[];
+    /* orderByKey is required for limitToLast in RTDB – without it the list is often empty */
+    const rooms=(await fdb.ref('rooms2').orderByKey().limitToLast(80).get()).val()||{},t=now(),rows=[];
     for(const code in rooms){const r=rooms[code];if(!r||!r.meta)continue;
       const m=r.meta;
       /* alte / leere / abgelaufene Matches ausblenden */
@@ -2893,9 +2905,9 @@ async function refreshList(){
       }else if(m.state!=='lobby')continue;
       const pl=Object.values(r.pl||{}).filter(fresh);
       if(!pl.length)continue;
-      /* Lobby ohne frische Aktivität >3 min verstecken */
+      /* Lobby ohne frische Aktivität >4 min verstecken (etwas großzügiger) */
       const newest=Math.max(...pl.map(p=>p.t||0), m.t||0, m.startAt||0);
-      if(t-newest>180000)continue;
+      if(t-newest>240000)continue;
       const playing=m.state==='playing',dur=m.dur||150;
       const left=playing?Math.max(0,Math.min(dur,dur-(t-(m.startAt||t))/1000)):0;
       const hp=r.pl&&r.pl[m.host];
@@ -2951,8 +2963,14 @@ async function enter(code,create,asSpec){
   const lo=lobObj();
   if(LIVE.spectator){lo.al=0;lo.g=0;lo.spec=1;lo.hp=0;}
   await LIVE.me.set(lo);
+  /* touch meta so room list sees activity */
+  try{await base.child('meta/t').set(now())}catch(e){}
   clearInterval(LIVE.hb);   /* nie zwei Lobby-Heartbeats gleichzeitig: ein übrig gebliebener überschrieb im Match die Position (0,0) */
-  LIVE.hb=setInterval(()=>{if(LIVE.att||!LIVE.me)return;LIVE.me.set(lobObj()).catch(fail)},2000);
+  LIVE.hb=setInterval(()=>{
+    if(LIVE.att||!LIVE.me)return;
+    LIVE.me.set(lobObj()).catch(fail);
+    try{if(LIVE.base)LIVE.base.child('meta/t').set(now())}catch(e){}
+  },2000);
   const on=(ref,fn)=>{ref.on('value',fn,fail);LIVE.lobOff.push(()=>ref.off('value',fn))};
   on(base.child('pl'),s=>{LIVE.lp=Object.entries(s.val()||{}).filter(([,v])=>fresh(v)).map(([id,v])=>({id,...v})).sort((a,b)=>a.id<b.id?-1:1);renderLobby()});
   on(base.child('meta'),s=>{LIVE.meta=s.val();if(!LIVE.meta){leaveLobby('Lobby wurde geschlossen.');return}renderLobby();if(LIVE.meta.state==='playing')beginMatch()});
@@ -2991,7 +3009,7 @@ function renderLobby(){
   }catch(e){}
 }
 /* Quick Match: immer die Lobby mit den meisten Spielern (noch nicht voll) */
-$('lbQuick').addEventListener('click',async()=>{try{lmsg('Suche die vollste Lobby …');await ensureSid();const rooms=(await fdb.ref('rooms2').limitToLast(60).get()).val()||{};
+$('lbQuick').addEventListener('click',async()=>{try{lmsg('Suche die vollste Lobby …');await ensureSid();const rooms=(await fdb.ref('rooms2').orderByKey().limitToLast(80).get()).val()||{};
   const cands=[];
   for(const code of Object.keys(rooms)){const r=rooms[code];if(!r||!r.meta)continue;const m=r.meta;
     if(m.state==='playing'){if((m.dur||150)-(now()-(m.startAt||0))/1000<20)continue}else if(m.state!=='lobby')continue;
@@ -3991,27 +4009,39 @@ window.update = function (dt) {
     feed('🏁 Match beendet');
     setTimeout(() => { try { leave(); } catch (e) {} }, 400);
   }
-  /* Sieg: (Kills - Tode) >= Limit  → z.B. +5: bei 2 Toden braucht man 7 Kills */
+  /* Sieg: Netto-Score (Kills − Tode) >= Limit  → z.B. +5: bei 2 Toden braucht man 7 Kills.
+     Jeder Client prüft; jeder darf meta.state=ended setzen (Rules erlauben meta-Write). */
   if (LIVE.att && !LIVE.exiting && !LIVE.spectator && (LIVE.winMode === 'kills' || (LIVE.meta && LIVE.meta.winMode === 'kills'))) {
     const lim = Math.max(1, (LIVE.killLimit || (LIVE.meta && LIVE.meta.killLimit) || 10) | 0);
-    const scoreOf = (kills, deaths) => (kills|0) - (deaths|0);
-    let best = scoreOf(P && P.kills, LIVE.deaths);
+    const scoreOf = (kills, deaths) => (kills | 0) - (deaths | 0);
+    /* Lokaler Score: alle Kills (Bots + Spieler) − eigene Tode */
+    let best = scoreOf(P && P.kills, LIVE.deaths | 0);
     let leader = (P && P.name) || 'Du';
     for (const r of Object.values(LIVE.R || {})) {
-      const sc = scoreOf((r.k|0) || (r.kills|0), (r.deaths|0) || (r.dth|0));
+      const rk = (r.k | 0) || (r.kills | 0);
+      const rd = (r.dth | 0) || (r.deaths | 0);
+      const sc = scoreOf(rk, rd);
       if (sc > best) { best = sc; leader = r.name || 'Pilot'; }
     }
+    /* HUD: aktueller Netto-Score anzeigen */
+    try {
+      const klEl = document.getElementById('kl');
+      if (klEl && P) {
+        const myScore = scoreOf(P.kills, LIVE.deaths | 0);
+        klEl.textContent = myScore + '/' + lim;
+      }
+    } catch (e) {}
     if (best >= lim) {
       LIVE.exiting = true;
       feed('🏁 ' + leader + ' schafft +' + lim + ' (Kills−Tode) – Match Ende');
-      msg('MATCH ENDE<br><small style="font-size:13px">' + leader + ' · +' + lim + '</small>', 2.2);
-      /* Host signalisiert allen das Ende */
+      msg('MATCH ENDE<br><small style="font-size:13px">' + leader + ' · +' + best + '</small>', 2.2);
+      /* Jeder Client signalisiert Ende – zuverlässiger als nur Host */
       try {
-        if (LIVE.host && LIVE.base) {
+        if (LIVE.base) {
           LIVE.base.child('meta').update({ state: 'ended', endAt: now(), winner: leader }).catch(() => {});
         }
       } catch (e) {}
-      setTimeout(() => { try { leave(); } catch (e) {} }, 1000);
+      setTimeout(() => { try { leave(); } catch (e) {} }, 900);
     }
   }
 
@@ -4331,12 +4361,21 @@ window.draw = function () {
   od.apply(this, arguments);
   if (!LIVE.att || !P) return;
   const t = performance.now() / 1000;
+  const z = VIEW_Z || 1;
   ctx.save();
+  /* MUST match main draw: scale then translate – otherwise remotes appear outside the arena on mobile */
+  ctx.scale(z, z);
   ctx.translate(-cam.x, -cam.y);
   for (const r of Object.values(LIVE.R).concat(LIVE.host ? [] : LIVE.B)) {
-    if (r.alive && r.modelId) {
-      drawC(r.x, r.y, r.r || 22, r.angle, r.col, (r.hp || 1) / (r.max || 1), 0, r.modelId, t, r.name || 'Pilot');
-    }
+    if (!r || !r.modelId) continue;
+    if (r.alive === 0 || r.alive === false) continue;
+    if (typeof r.x !== 'number' || typeof r.y !== 'number') continue;
+    /* hard clamp so nothing ever renders outside the arena */
+    const rr = r.r || 22;
+    const x = Math.max(rr, Math.min(A - rr, r.x));
+    const y = Math.max(rr, Math.min(A - rr, r.y));
+    r.x = x; r.y = y;
+    drawC(x, y, rr, r.angle || 0, r.col, (r.hp || 1) / (r.max || 1), 0, r.modelId, t, r.name || 'Pilot');
   }
   ctx.restore();
 };
