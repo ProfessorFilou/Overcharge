@@ -310,67 +310,78 @@ html,body{height:100%;min-height:0;overflow:hidden}
 @keyframes rnPulse{0%,100%{filter:drop-shadow(0 0 8px rgba(100,245,210,.4))}50%{filter:drop-shadow(0 0 16px rgba(100,245,210,.75))}}
 
 /* Rangliste: eine Zeile, klare Spalten + Kopfzeile */
-.rank-table{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y!important;margin-top:6px}
-.rank-table-inner{min-width:320px;width:100%}
+.rank-table{width:100%;overflow:visible;margin-top:6px}
+.rank-table-inner{width:100%;min-width:0}
 .rank-head,.rank-row.rank-line{
   display:grid;
-  grid-template-columns:36px minmax(72px,1.4fr) 44px 44px 48px 52px 56px;
-  gap:4px 6px;
+  grid-template-columns:28px minmax(0,1.6fr) 1fr 1fr 1fr 1fr 1.1fr;
+  gap:2px 4px;
   align-items:center;
-  padding:8px 10px;
+  padding:7px 8px;
   box-sizing:border-box;
+  width:100%;
 }
 .rank-head{
   margin-bottom:4px;padding-top:6px;padding-bottom:6px;
   border-radius:10px;
-  background:rgba(255,255,255,.04);
-  border:1px solid rgba(148,171,220,.12);
-  font-size:9px;font-weight:800;letter-spacing:.4px;
+  background:rgba(255,255,255,.05);
+  border:1px solid rgba(148,171,220,.14);
+  font-size:8px;font-weight:800;letter-spacing:.15px;
   color:#8c9ab8;text-transform:uppercase;
 }
-.rank-head span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rank-head span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center}
+.rank-head span:nth-child(1){text-align:center}
+.rank-head span:nth-child(2){text-align:left}
+.rank-head span:nth-child(7){text-align:right}
 .rank-row.rank-line{
   border-radius:11px;
   background:rgba(255,255,255,.035);
   border:1px solid rgba(255,255,255,.065);
   margin-bottom:5px;
   font-size:11px;font-weight:800;
+  cursor:pointer;
+  transition:border-color .15s,background .15s;
 }
-.rank-row.rank-line .rank-number{text-align:center;font-size:13px}
-.rank-row.rank-line .rank-player{min-width:0;overflow:hidden}
-.rank-row.rank-line .rank-player .rn{display:inline-block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom}
-.rank-row.rank-line .rank-sub{display:block;font-size:8px;font-weight:700;margin-top:2px;letter-spacing:.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.rank-cell{text-align:center;font-variant-numeric:tabular-nums;color:#d7e0f4;white-space:nowrap}
-.rank-cell.rp{color:#ffd866;font-weight:900;text-align:right}
-.rank-legend{font-size:10px;line-height:1.45;color:#7f8dab;margin:8px 2px 0;padding:0}
-@media(max-width:400px){
-  .rank-head,.rank-row.rank-line{
-    grid-template-columns:30px minmax(56px,1.2fr) 36px 36px 40px 44px 48px;
-    gap:2px 4px;padding:7px 6px;font-size:10px;
-  }
-  .rank-head{font-size:8px;letter-spacing:.2px}
-  .rank-row.rank-line .rank-sub{font-size:7px}
+.rank-row.rank-line:hover,.rank-row.rank-line:active{
+  border-color:rgba(100,245,210,.45);
+  background:rgba(100,245,210,.07);
 }
-/* ===== ROBOT STATS PANEL ===== */
-#botStats{
-  width:min(100%,420px);margin:4px auto 2px;padding:12px 14px 14px;
-  border:1px solid rgba(148,171,220,.18);border-radius:16px;
-  background:linear-gradient(155deg,rgba(18,25,49,.88),rgba(8,12,27,.94));
-  box-shadow:0 10px 28px rgba(0,0,0,.22);backdrop-filter:blur(12px);
-}
-#botStats .bs-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
-#botStats .bs-name{font-size:15px;font-weight:900;letter-spacing:.6px;color:#fff}
-#botStats .bs-role{font-size:10px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:var(--bs-c,#64f5d2);opacity:.9}
-#botStats .bs-row{display:grid;grid-template-columns:92px 1fr 36px;align-items:center;gap:8px;margin:5px 0}
-#botStats .bs-lab{font-size:10px;font-weight:800;letter-spacing:.4px;color:#9aa8c5;text-transform:uppercase}
-#botStats .bs-track{height:8px;border-radius:6px;background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.06);overflow:hidden}
-#botStats .bs-fill{height:100%;width:0;border-radius:6px;background:linear-gradient(90deg,color-mix(in srgb,var(--bs-c,#64f5d2) 70%,#fff),var(--bs-c,#64f5d2));box-shadow:0 0 10px color-mix(in srgb,var(--bs-c,#64f5d2) 35%,transparent);transition:width .22s ease}
-#botStats .bs-val{font-size:11px;font-weight:900;color:#e8eefc;text-align:right;font-variant-numeric:tabular-nums}
+.rank-row.rank-line .rank-number{text-align:center;font-size:12px}
+.rank-row.rank-line .rank-player{min-width:0;overflow:hidden;text-align:left}
+.rank-row.rank-line .rank-player .rn{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px}
+.rank-row.rank-line .rank-sub{display:block;font-size:7px;font-weight:700;margin-top:1px;letter-spacing:.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rank-cell{text-align:center;font-variant-numeric:tabular-nums;color:#d7e0f4;white-space:nowrap;font-size:11px}
+.rank-cell.rp{color:#ffd866;font-weight:900;text-align:right;padding-right:2px}
+.rank-legend{font-size:9px;line-height:1.4;color:#7f8dab;margin:8px 2px 0;padding:0}
 @media(max-width:380px){
-  #botStats{padding:10px 11px}
-  #botStats .bs-row{grid-template-columns:78px 1fr 32px;gap:6px}
-  #botStats .bs-lab{font-size:9px}
+  .rank-head,.rank-row.rank-line{padding:6px 5px;gap:2px;font-size:10px}
+  .rank-head{font-size:7px}
+  .rank-cell{font-size:10px}
 }
+#profileModal{position:fixed;inset:0;z-index:110;display:none;align-items:center;justify-content:center;padding:14px;background:rgba(2,4,12,.78);backdrop-filter:blur(14px);touch-action:pan-y!important;overflow:auto}
+#profileModal.on{display:flex}
+#profileModal *{touch-action:pan-y!important}
+#profileModal button{touch-action:manipulation!important}
+.profile-card{width:min(100%,420px);max-height:min(90dvh,640px);overflow:auto;border-radius:20px;border:1px solid rgba(100,245,210,.28);background:linear-gradient(160deg,#12182e,#080c18);box-shadow:0 24px 70px rgba(0,0,0,.55);padding:16px;color:#fff;-webkit-overflow-scrolling:touch}
+.profile-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px}
+.profile-name{font-size:18px;font-weight:950}
+.profile-rank{font-size:12px;font-weight:800;margin-top:4px}
+.profile-close{width:36px;height:36px;border-radius:11px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:#fff;font-size:20px;flex-shrink:0}
+.profile-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0}
+.profile-stat{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:10px 8px;text-align:center}
+.profile-stat b{display:block;font-size:16px;font-weight:950;color:#64f5d2}
+.profile-stat span{font-size:9px;font-weight:800;letter-spacing:.6px;color:#8c9ab8;text-transform:uppercase}
+.profile-ach-title{font-size:11px;font-weight:900;letter-spacing:1.2px;color:#c084fc;text-transform:uppercase;margin:14px 0 8px}
+.ach-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ach-item{display:flex;gap:8px;align-items:flex-start;padding:9px;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);opacity:.38;filter:grayscale(.7)}
+.ach-item.on{opacity:1;filter:none;border-color:rgba(100,245,210,.28);background:rgba(100,245,210,.06)}
+.ach-ico{font-size:20px;line-height:1;flex-shrink:0;width:28px;text-align:center}
+.ach-meta{min-width:0}
+.ach-meta strong{display:block;font-size:11px;font-weight:900;color:#eef3ff}
+.ach-meta small{display:block;font-size:9px;color:#8c9ab8;line-height:1.35;margin-top:2px}
+#achToast{position:fixed;left:50%;bottom:max(24px,env(safe-area-inset-bottom));transform:translateX(-50%) translateY(20px);z-index:120;background:rgba(10,14,28,.95);border:1px solid rgba(192,132,252,.45);border-radius:14px;padding:12px 16px;color:#fff;font-weight:800;font-size:13px;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;box-shadow:0 12px 40px rgba(0,0,0,.4);max-width:min(92vw,360px);text-align:center}
+#achToast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+
 @media(max-height:700px){
   #botStats{margin-top:0;padding:8px 12px 10px}
   #botStats .bs-row{margin:3px 0}
@@ -1106,7 +1117,7 @@ function burst(x, y, col, n = 14, sp = 200) {
 function fDmg(x, y, v, c = '#fff') { if (window.__ocSettings && window.__ocSettings.dmgNum === false) return; const el = document.createElement('div'); el.className = 'fd'; el.textContent = v; el.style.color = c; el.style.left = (x - cam.x) + 'px'; el.style.top = (y - cam.y) + 'px'; document.getElementById('ui').appendChild(el); setTimeout(() => el.remove(), 580); }
 function feed(t) { if (window.__ocSettings && window.__ocSettings.feed === false) return; const el = document.createElement('div'); el.className = 'km'; el.textContent = t; document.getElementById('feed').prepend(el); setTimeout(() => el.remove(), 2300); }
 function msg(t, d = 1.1) { const el = document.getElementById('msg'); el.innerHTML = t; el.style.opacity = '1'; setTimeout(() => el.style.opacity = '0', d * 1000); }
-function showStreak(n) { const el = document.getElementById('streak'); el.textContent = n >= 8 ? 'GODLIKE x' + n : n >= 5 ? 'LEGENDARY x' + n : n >= 3 ? 'RAMPAGE x' + n : 'SPREE x' + n; el.style.opacity = '1'; setTimeout(() => el.style.opacity = '0', 900); sfx.streak(); }
+function showStreak(n) { try{window.__bestStreak=Math.max(window.__bestStreak|0,n|0)}catch(e){} const el = document.getElementById('streak'); el.textContent = n >= 8 ? 'GODLIKE x' + n : n >= 5 ? 'LEGENDARY x' + n : n >= 3 ? 'RAMPAGE x' + n : 'SPREE x' + n; el.style.opacity = '1'; setTimeout(() => el.style.opacity = '0', 900); sfx.streak(); }
 function bullet(x, y, a, spd, dmg, r, fp, col, life = 1, pierce = 0, owner = null) {
   if (window.__superDmgMul && window.__superDmgMul !== 1 && fp) {
     dmg = Math.round((dmg || 0) * window.__superDmgMul);
@@ -1481,7 +1492,7 @@ function dmgBot(bot, dmg, isSuper) {
 function end(won) {
   over = 1;
   if (!window.__rpInfo && P) {
-    window.__rpInfo = { mode: 'solo', k: P.kills|0, d: (P._deaths|0), secs: 180 - (time||0), place: won ? 1 : 2, n: 1 };
+    window.__rpInfo = { mode: 'solo', k: P.kills|0, d: (P._deaths|0), secs: 180 - (time||0), place: won ? 1 : 2, n: 1, bestStreak: (window.__bestStreak|0), won: !!won };
   }
   msg(won ? 'VICTORY<br><small style="font-size:13px">Overcharged</small>' : 'DEFEAT<br><small style="font-size:13px">Try again</small>', 4.5);
   setTimeout(() => { document.getElementById('menu').classList.remove('hide');document.body.classList.remove('playing'); document.getElementById('hud').classList.remove('show'); run = 0; }, 4000);
@@ -2077,35 +2088,37 @@ function renderBoard(){
   document.querySelectorAll('.podium-host').forEach(e=>{e.innerHTML='';e.style.display='none'});
   const top = board.slice(0,10);
   const head = `<div class="rank-table"><div class="rank-table-inner">
-    <div class="rank-head" title="Platz · Name · Abschüsse · Tode · Kills pro Tod · Siege · Rangpunkte">
+    <div class="rank-head">
       <span>#</span>
       <span>Name</span>
-      <span title="Abschüsse (Kills)">Kills</span>
-      <span title="Wie oft gestorben">Tode</span>
-      <span title="Kills geteilt durch Tode">K/D</span>
-      <span title="Gewonnene Matches">Siege</span>
-      <span title="Rangpunkte">RP</span>
+      <span>Kills</span>
+      <span>Tode</span>
+      <span>K/D</span>
+      <span>Siege</span>
+      <span>RP</span>
     </div>`;
   const rows = top.length ? top.map((p,i)=>{
     const r=rankInfo(p.rp|0), me=user&&p.uid===user.uid;
     const med = i===0?'🥇':i===1?'🥈':i===2?'🥉':String(i+1);
     const kills=p.kills|0, deaths=p.deaths|0;
     const kd = deaths>0 ? (kills/deaths).toFixed(1) : (kills>0 ? String(kills) : '–');
-    return `<div class="rank-row rank-line" style="${me?'border-color:#00ffd0;background:rgba(0,255,210,.06)':''}">
+    const uid = String(p.uid||'').replace(/"/g,'');
+    return `<div class="rank-row rank-line" data-uid="${uid}" style="${me?'border-color:#00ffd0;background:rgba(0,255,210,.06)':''}">
       <span class="rank-number">${med}</span>
       <span class="rank-player">${rankNameHTML(p.name,p.rp)}<small class="rank-sub" style="color:${r.col}">${r.ico} ${r.name}</small></span>
-      <span class="rank-cell" title="Abschüsse">${kills}</span>
-      <span class="rank-cell" title="Tode">${deaths}</span>
-      <span class="rank-cell" title="Kills pro Tod">${kd}</span>
-      <span class="rank-cell" title="Siege">${p.wins|0}</span>
-      <span class="rank-cell rp" title="Rangpunkte">${p.rp|0}</span>
+      <span class="rank-cell">${kills}</span>
+      <span class="rank-cell">${deaths}</span>
+      <span class="rank-cell">${kd}</span>
+      <span class="rank-cell">${p.wins|0}</span>
+      <span class="rank-cell rp">${p.rp|0}</span>
     </div>`;
   }).join('') : '<div class="online-muted" style="padding:12px">Noch keine Piloten. Melde dich an und sei der Erste!</div>';
   const foot = `</div></div>
-    <p class="rank-legend"><strong>Kills</strong> = Abschüsse · <strong>Tode</strong> = wie oft gestorben · <strong>K/D</strong> = Kills÷Tode · <strong>Siege</strong> = gewonnene Matches · <strong>RP</strong> = Rangpunkte</p>`;
+    <p class="rank-legend"><strong>Kills</strong> Abschüsse · <strong>Tode</strong> gestorben · <strong>K/D</strong> Kills÷Tode · <strong>Siege</strong> gewonnene Matches · <strong>RP</strong> Rangpunkte · Tippe einen Spieler fürs Profil</p>`;
   const htmlOut = top.length ? (head + rows + foot) : rows;
   if($('rtRows'))$('rtRows').innerHTML=htmlOut;
   if($('rankRailRows'))$('rankRailRows').innerHTML=htmlOut;
+  try{bindRankClicks($('rtRows'));bindRankClicks($('rankRailRows'));}catch(e){}
 }
 function renderRank(){
   const rk=ranked(),r=rk?rankInfo(RP):{col:'#6f7d9c',ico:'🔒',name:'UNGERANKT',pts:0,pct:0,sub:'Melde dich an, um zu ranken'};card.style.setProperty('--rc',r.col);
@@ -2203,9 +2216,119 @@ async function applyRP(won,info){
     if(r.snapshot.exists())next=r.snapshot.val().rp|0;
   }catch(e){console.warn('RP speichern:',e)}}
   RP=next;renderRank();
+  try{
+    const bag=evaluateAchievements(Object.assign({},info,{won:!!won}),d,loadLocalAch());
+    if(fdb&&user){fdb.ref('leaderboard/'+user.uid).update({ach:bag}).catch(()=>{})}
+  }catch(e){console.warn('ach',e)}
+
   try{if(typeof showBotStats==='function'&&typeof sel!=='undefined')showBotStats(sel)}catch(e){}
   if(window.rankAnim)window.rankAnim(prev,next,detail);
 }
+
+/* ===== ACHIEVEMENTS + PROFIL ===== */
+const ACHIEVEMENTS = [
+  {id:'first_blood', ico:'🩸', name:'First Blood', desc:'Erziele deinen ersten Kill'},
+  {id:'spree5', ico:'⚡', name:'Rampage', desc:'5 Abschüsse ohne zu sterben'},
+  {id:'spree10', ico:'🔥', name:'Killstreak 10', desc:'10 Abschüsse ohne zu sterben'},
+  {id:'rp30', ico:'📈', name:'Solider Lauf', desc:'Mindestens 30 RP in einem Match'},
+  {id:'rp50', ico:'💎', name:'RP-Jäger', desc:'Über 50 RP in einem Match'},
+  {id:'zero_hero', ico:'💀', name:'Leer aus', desc:'Stirb ohne einen einzigen Kill'},
+  {id:'survivor', ico:'🛡️', name:'Überlebenskünstler', desc:'Match ohne Tod (min. 45s)'},
+  {id:'bot_slayer', ico:'🤖', name:'Bot-Jäger', desc:'Mind. 8 Bot-Kills in einem Match'},
+  {id:'pvp_ace', ico:'🎯', name:'Ace Pilot', desc:'Mind. 3 Spieler-Kills (Live)'},
+  {id:'comeback', ico:'↩️', name:'Comeback', desc:'Gewinne trotz mind. 3 Todesfällen'},
+  {id:'matches10', ico:'🎮', name:'Stammgast', desc:'10 Matches gespielt'},
+  {id:'silver_up', ico:'🥈', name:'Silber-Aufstieg', desc:'Erreiche den Rang Silber'},
+];
+function loadLocalAch(){try{return JSON.parse(localStorage.getItem('overcharge_ach_v1')||'{}')}catch(e){return{}}}
+function saveLocalAch(a){try{localStorage.setItem('overcharge_ach_v1',JSON.stringify(a||{}))}catch(e){}}
+function unlockAch(id,bag){bag=bag||loadLocalAch();if(bag[id])return false;bag[id]=Date.now();saveLocalAch(bag);return true}
+function showAchToast(list){
+  if(!list||!list.length)return;
+  let el=document.getElementById('achToast');
+  if(!el){el=document.createElement('div');el.id='achToast';document.body.appendChild(el)}
+  el.innerHTML=list.map(a=>`${a.ico} <b>${a.name}</b><br><small style="opacity:.75">${a.desc}</small>`).join('<hr style="border:0;border-top:1px solid rgba(255,255,255,.1);margin:8px 0">');
+  el.classList.add('on');clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove('on'),4200);
+}
+function evaluateAchievements(info,delta,bag){
+  info=info||{};bag=bag||loadLocalAch();const newly=[];
+  const kills=Math.max(0,info.mode==='live'?((info.humanKills|0)+(info.botKills|0)):(info.k|0));
+  const deaths=Math.max(0,info.d|0), humanK=info.humanKills|0, botK=info.botKills|0;
+  const streak=info.bestStreak|0, won=!!info.won;
+  const check=(id,cond)=>{if(cond&&unlockAch(id,bag)){const a=ACHIEVEMENTS.find(x=>x.id===id);if(a)newly.push(a)}};
+  check('first_blood',kills>=1);
+  check('spree5',streak>=5||(deaths===0&&kills>=5));
+  check('spree10',streak>=10||(deaths===0&&kills>=10));
+  check('rp50',(delta|0)>50);
+  check('rp30',(delta|0)>=30);
+  check('zero_hero',deaths>=1&&kills===0);
+  check('survivor',deaths===0&&(info.secs|0)>=45);
+  check('bot_slayer',botK>=8||(info.mode!=='live'&&kills>=8));
+  check('pvp_ace',humanK>=3);
+  check('comeback',won&&deaths>=3);
+  bag._matches=(bag._matches|0)+1;saveLocalAch(bag);
+  check('matches10',(bag._matches|0)>=10);
+  try{const r=rankInfo(typeof RP==='number'?RP:0);check('silver_up',(r.tier|0)>=1)}catch(e){}
+  if(newly.length)showAchToast(newly);
+  return bag;
+}
+function achListHTML(unlocked){
+  unlocked=unlocked||{};
+  return `<div class="ach-grid">${ACHIEVEMENTS.map(a=>{
+    const on=!!unlocked[a.id];
+    return `<div class="ach-item${on?' on':''}"><div class="ach-ico">${a.ico}</div><div class="ach-meta"><strong>${a.name}</strong><small>${a.desc}</small></div></div>`;
+  }).join('')}</div>`;
+}
+function openProfile(p){
+  if(!p)return;
+  let modal=document.getElementById('profileModal');
+  if(!modal){
+    modal=document.createElement('div');modal.id='profileModal';
+    modal.innerHTML=`<div class="profile-card" role="dialog" aria-modal="true">
+      <div class="profile-top"><div><div class="profile-name" id="pfName">—</div><div class="profile-rank" id="pfRank">—</div></div>
+      <button type="button" class="profile-close" id="pfClose" aria-label="Schließen">×</button></div>
+      <div class="profile-stats">
+        <div class="profile-stat"><b id="pfKills">0</b><span>Kills</span></div>
+        <div class="profile-stat"><b id="pfDeaths">0</b><span>Tode</span></div>
+        <div class="profile-stat"><b id="pfKD">–</b><span>K/D</span></div>
+        <div class="profile-stat"><b id="pfWins">0</b><span>Siege</span></div>
+        <div class="profile-stat"><b id="pfRP">0</b><span>RP</span></div>
+        <div class="profile-stat"><b id="pfMatch">0</b><span>Matches</span></div>
+      </div>
+      <div class="profile-ach-title">Abzeichen</div>
+      <div id="pfAch"></div>
+    </div>`;
+    document.body.appendChild(modal);
+    modal.addEventListener('click',e=>{if(e.target===modal)document.getElementById('pfClose').click()});
+    document.getElementById('pfClose').onclick=()=>modal.classList.remove('on');
+  }
+  const r=rankInfo(p.rp|0);
+  const kills=p.kills|0, deaths=p.deaths|0;
+  const kd=deaths>0?(kills/deaths).toFixed(2):(kills>0?String(kills):'–');
+  document.getElementById('pfName').innerHTML=rankNameHTML(p.name||'Pilot',p.rp);
+  document.getElementById('pfRank').innerHTML=`<span style="color:${r.col}">${r.ico} ${r.name}</span>`;
+  document.getElementById('pfKills').textContent=kills;
+  document.getElementById('pfDeaths').textContent=deaths;
+  document.getElementById('pfKD').textContent=kd;
+  document.getElementById('pfWins').textContent=p.wins|0;
+  document.getElementById('pfRP').textContent=p.rp|0;
+  document.getElementById('pfMatch').textContent=p.matches|0;
+  const ach=(p.ach&&typeof p.ach==='object')?p.ach:(user&&p.uid===user.uid?loadLocalAch():{});
+  document.getElementById('pfAch').innerHTML=achListHTML(ach);
+  modal.classList.add('on');
+}
+function bindRankClicks(root){
+  if(!root)return;
+  root.onclick=e=>{
+    const row=e.target.closest('.rank-row[data-uid]');
+    if(!row)return;
+    const uid=row.getAttribute('data-uid');
+    let p=board.find(x=>x.uid===uid);
+    if(!p&&user&&uid===user.uid)p={uid,name:nm(),rp:RP,kills:0,deaths:0,wins:0,matches:0,ach:loadLocalAch()};
+    if(p)openProfile(p);
+  };
+}
+
 /* ===== MAPS ===== */
 const O=a=>a.map(([x,y,w,h])=>({x,y,w,h}));
 const DEF=O([[140,140,130,130],[1480,140,130,130],[140,1480,130,130],[1480,1480,130,130],[740,90,270,42],[740,1618,270,42],[90,740,42,270],[1618,740,42,270],[420,420,110,110],[1220,420,110,110],[420,1220,110,110],[1220,1220,110,110],[770,770,210,210],[240,760,48,230],[1462,760,48,230],[760,240,230,48],[760,1462,230,48],[500,900,80,80],[1170,760,80,80],[900,500,80,80]]);
@@ -3708,7 +3831,9 @@ function leave() {
     secs,
     humanKills: LIVE.hk | 0,
     botKills: Math.max(0, (P.kills | 0) - (LIVE.hk | 0)),
-    diff: LIVE.diff || (LIVE.meta && LIVE.meta.diff) || 'mid'
+    diff: LIVE.diff || (LIVE.meta && LIVE.meta.diff) || 'mid',
+    bestStreak: window.__bestStreak|0,
+    won: !!won
   };
   LIVE._lastCode = LIVE.rid;
   LIVE.exiting = true; try{document.body.classList.remove('playing')}catch(e){}
