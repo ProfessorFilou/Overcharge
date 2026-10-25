@@ -294,11 +294,16 @@ html,body{height:100%;min-height:0;overflow:hidden}
 
 /* Rank name flair */
 .rn{font-weight:900;letter-spacing:.3px}
-.rn-bronze{color:#c47a3a;text-shadow:0 0 6px rgba(196,122,58,.35)}
-.rn-silber{color:#e8eef8;text-shadow:0 0 10px rgba(200,220,255,.45)}
-.rn-gold{color:#ffd34d;text-shadow:0 0 12px rgba(255,200,60,.55);animation:rnGold 2.4s ease-in-out infinite}
-.rn-diamant{background:linear-gradient(90deg,#a5d8ff,#7ec8ff,#dbeafe,#7ec8ff,#a5d8ff);background-size:200% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 6px rgba(126,200,255,.5));animation:rnShimmer 2.8s linear infinite}
-.rn-adamantium{background:linear-gradient(90deg,#fff,#b8f0ff,#e8fbff,#64f5d2,#fff);background-size:220% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 10px rgba(100,245,210,.55));animation:rnShimmer 1.8s linear infinite,rnPulse 2.2s ease-in-out infinite}
+.rn{font-weight:900;letter-spacing:.3px}
+.rn-bronze{color:#d4924a;text-shadow:0 0 8px rgba(196,122,58,.4)}
+.rn-silber{color:#eef3ff;text-shadow:0 0 12px rgba(200,220,255,.55);animation:rnSoft 3s ease-in-out infinite}
+.rn-gold{color:#ffd34d;text-shadow:0 0 14px rgba(255,200,60,.65);animation:rnGold 2.2s ease-in-out infinite}
+.rn-diamant{background:linear-gradient(90deg,#9ad4ff,#e8f6ff,#6eb8ff,#c8eaff,#9ad4ff);background-size:240% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 8px rgba(126,200,255,.55));animation:rnShimmer 2.4s linear infinite}
+.rn-adamantium{background:linear-gradient(90deg,#fff,#64f5d2,#b8f0ff,#fff,#e8fbff,#64f5d2,#fff);background-size:280% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 12px rgba(100,245,210,.65));animation:rnShimmer 1.5s linear infinite,rnPulse 2s ease-in-out infinite}
+@keyframes rnSoft{0%,100%{filter:brightness(1)}50%{filter:brightness(1.12)}}
+@keyframes rnGold{0%,100%{filter:brightness(1);text-shadow:0 0 10px rgba(255,200,60,.5)}50%{filter:brightness(1.3);text-shadow:0 0 18px rgba(255,220,100,.85)}}
+@keyframes rnShimmer{0%{background-position:0% 50%}100%{background-position:200% 50%}}
+@keyframes rnPulse{0%,100%{filter:drop-shadow(0 0 8px rgba(100,245,210,.45))}50%{filter:drop-shadow(0 0 16px rgba(100,245,210,.9))}}
 @keyframes rnGold{0%,100%{filter:brightness(1)}50%{filter:brightness(1.25)}}
 @keyframes rnShimmer{0%{background-position:0% 50%}100%{background-position:200% 50%}}
 @keyframes rnPulse{0%,100%{filter:drop-shadow(0 0 8px rgba(100,245,210,.4))}50%{filter:drop-shadow(0 0 16px rgba(100,245,210,.75))}}
@@ -852,7 +857,11 @@ function showBotStats(b) {
   if (el('bsSuperType')) el('bsSuperType').textContent = si.type || '';
   if (el('bsSuperDmg')) el('bsSuperDmg').textContent = String(sd);
   if (el('bsSuperHits')) el('bsSuperHits').textContent = si.hits ? ('· bis ' + si.hits + ' Treffer') : '';
-  if (el('bsSuperNote')) el('bsSuperNote').textContent = (si.note || '') + (lv > 1 ? '  ·  Rang-Bonus ×' + mul.toFixed(2) : '  ·  Ab Silber steigt das Level');
+  if (el('bsSuperNote')) {
+    const unlock = ['Bronze: Level 1','Silber: Level 2','Gold: Level 3','Diamant: Level 4','Adamantium: Level 5'];
+    const tip = unlock[Math.min(4, Math.max(0, lv-1))] || '';
+    el('bsSuperNote').textContent = (si.note || '') + '  ·  ' + tip + (lv > 1 ? '  ·  ×' + mul.toFixed(2) + ' Schaden' : '');
+  }
 }
 BRS.forEach((b, i) => {
   const c = document.createElement('div');
@@ -1947,11 +1956,12 @@ const TIERS=[
 ];
 /* Breite pro Division – Summe bis Adamantium 1 ≈ 6000+ RP */
 const DIV_W=[
-  100,130,160,   /* Bronze 3,2,1 */
-  200,240,280,   /* Silber 3,2,1 */
-  320,380,450,   /* Gold 3,2,1 */
-  520,600,700,   /* Diamant 3,2,1 */
-  800,950,1200   /* Adamantium 3,2,1 */
+  /* Langsamer Aufstieg: viele Matches pro Division */
+  220,280,360,     /* Bronze 3→2→1   (~860) */
+  450,560,700,     /* Silber 3→2→1   (~1710) */
+  850,1050,1300,   /* Gold 3→2→1     (~3200) */
+  1600,2000,2500,  /* Diamant 3→2→1  (~6100) */
+  3200,4000,5200   /* Adamantium 3→2→1 (~12400)  Gesamtsumme ~24k RP */
 ];
 const DIV_CUM=(function(){const a=[0];for(const w of DIV_W)a.push(a[a.length-1]+w);return a})();
 function rankInfo(rp){rp=Math.max(0,rp|0);
@@ -1971,7 +1981,7 @@ function getSuperLevel(rp){
     return Math.max(1,Math.min(5,r.superLv||((r.tier|0)+1)));
   }catch(e){return 1}
 }
-function superMul(lv){lv=lv||getSuperLevel();return 1+(lv-1)*0.22} /* L5 ≈ +88% Schaden */
+function superMul(lv){lv=lv||getSuperLevel();const t=[1,1.25,1.5,1.8,2.15];return t[Math.max(0,Math.min(4,(lv|0)-1))]||1} /* Lv1→5: 100%…215% */
 
 function rankNameHTML(name, rp){
   const r = rankInfo(rp|0);
@@ -1995,7 +2005,7 @@ const lobH=[...document.querySelectorAll('.online-section h3')].find(h=>h.textCo
 let lobPod=null;if(lobH){lobPod=document.createElement('div');lobPod.className='podium-host';lobH.after(lobPod);}
 const oldList=$('leaderboardList'),oldSec=oldList&&oldList.closest('.online-section');
 const sec=document.createElement('section');sec.className='online-section';
-sec.innerHTML='<h3>Top Piloten · Live <span id="onlineCnt" style="float:right;color:#9aa8c5;letter-spacing:0"></span></h3><div class="podium-host"></div><div id="rtRows"></div><div class="online-muted" style="margin-top:8px">Rang-Punkte (RP) nur mit Account. Bronze→Silber→Gold→Diamant→Adamantium (je 3 Divisionen). Frühe Ränge steigen schnell, höhere brauchen mehr RP – Verluste bleiben mild.</div>';
+sec.innerHTML='<h3>Top Piloten · Live <span id="onlineCnt" style="float:right;color:#9aa8c5;letter-spacing:0"></span></h3><div class="podium-host"></div><div id="rtRows"></div><div class="online-muted" style="margin-top:8px">RP nur mit Account. Stufen: Bronze 3–1 → Silber 3–1 → Gold 3–1 → Diamant 3–1 → Adamantium 3–1. RP aus Kills; Minus nur wenn Tode > Kills. Overcharge-Level steigt mit dem Rang (Lv.1–5).</div>';
 if(oldSec){oldSec.before(sec);oldSec.style.display='none';}
 $('leaderboardOpen').addEventListener('click',e=>{e.preventDefault();if(window.__openRankRail)window.__openRankRail();});
 const root=$('root');
@@ -2053,7 +2063,7 @@ function popRP(d,a,b){
 }
 /* Fair: Platzierung + Kills/Tode, Tier-Steuer, Divisions-Schutz, Mindestspielzeit, Bot-Kills zählen nicht für RP */
 function calcDelta(won,i){
-  /* RP nur aus Kills. Minus nur wenn Tode > Kills. Sonst nie negativ. */
+  /* RP nur aus Kills. Minus NUR wenn Tode > Kills (z.B. 4 Kills + 1 Tod = positiv). */
   i=i||{};
   if(i.secs!=null && i.secs<40)return null;
   const kills = i.mode==='live'
@@ -2065,29 +2075,30 @@ function calcDelta(won,i){
   /* Abstieg nur bei klar negativer Bilanz */
   if(deaths>kills){
     const gap = deaths-kills;
-    let loss = -(2+gap*2);           /* -2, -4, -6 … */
-    loss = Math.max(-14, loss);      /* Deckel */
-    /* hohe Ränge verlieren etwas mehr, Bronze fast nichts */
-    loss = Math.round(loss * [0.55,0.75,0.9,1,1.1][tier]);
-    if(tier===0) loss = Math.max(-4, loss);
+    let loss = -(1+gap*2);           /* -3, -5, -7 … */
+    loss = Math.max(-12, loss);
+    loss = Math.round(loss * [0.4,0.65,0.85,1,1.15][tier]);
+    if(tier===0) loss = Math.max(-3, loss); /* Bronze: max -3 */
     return loss;
   }
-  /* Gewinn: klar kill-basiert */
-  let gain = kills * 5;              /* 5 RP pro Kill */
-  if(kills>=1) gain += 3;            /* Teilnahme-Bonus */
-  if(kills>=5) gain += 4;            /* Spree */
-  if(kills>=8) gain += 6;
-  if(won) gain += 6;
+  /* 0:0 oder Kills >= Tode → nie negativ */
+  if(kills<=0) return 0;
+  /* Gewinn: kill-basiert, bewusst langsam */
+  let gain = kills * 3;              /* 3 RP pro Kill */
+  if(kills>=3) gain += 2;
+  if(kills>=5) gain += 3;
+  if(kills>=8) gain += 4;
+  if(won) gain += 4;
   if(i.mode==='live'){
-    if((i.place|0)===1) gain += 8;
-    else if((i.place|0)===2) gain += 4;
-    gain += Math.min(10,(i.humanKills|0)*2); /* PvP-Kills extra */
+    if((i.place|0)===1) gain += 5;
+    else if((i.place|0)===2) gain += 2;
+    gain += Math.min(8,(i.humanKills|0)*2);
   }
-  /* Höhere Ränge steigen langsamer */
-  gain = Math.round(gain * [1,0.92,0.82,0.72,0.6][tier]);
-  return Math.max(0, Math.min(48, gain));
+  /* Höhere Ränge steigen deutlich langsamer */
+  gain = Math.round(gain * [1,0.88,0.75,0.62,0.5][tier]);
+  return Math.max(0, Math.min(36, gain));
 }
-function applyDeltafunction applyDelta(rp,d){
+function applyDelta(rp,d){
   let n=Math.max(0,rp+d);
   if(d<0){
     /* Divisions-Schutz: kein Abstieg mitten in der Division */
